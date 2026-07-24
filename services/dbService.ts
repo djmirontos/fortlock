@@ -1,19 +1,28 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as Crypto from 'expo-crypto';
-import { Credential, CredentialCategory } from '../types';
+import * as ExpoRandom from 'expo-crypto';
+import {
+  encryptCredentialData,
+  decryptCredentialData,
+} from './cryptoService';
+import {
+  Credential,
+  CredentialData,
+  DecryptedCredential,
+  CredentialCategory,
+} from '../types';
 
 const CREDENTIALS_KEY = 'fortlock_credentials';
 
 // Generate unique ID
 const generateId = async (): Promise<string> => {
-  const random = await Crypto.getRandomBytesAsync(8);
-  return Array.from(random)
+  const random = await ExpoRandom.getRandomBytesAsync(8);
+  return Array.from(new Uint8Array(random))
     .map((b) => b.toString(16).padStart(2, '0'))
     .join('');
 };
 
-// Get all credentials
-export const getCredentials = async (): Promise<Credential[]> => {
+// Get raw encrypted credentials from storage
+export const getRawCredentials = async (): Promise<Credential[]> => {
   try {
     const data = await AsyncStorage.getItem(CREDENTIALS_KEY);
     if (!data) return [];
@@ -23,41 +32,67 @@ export const getCredentials = async (): Promise<Credential[]> => {
   }
 };
 
-// Get credentials by category
-export const getCredentialsByCategory = async (
-  category: CredentialCategory
-): Promise<Credential[]> => {
-  const all = await getCredentials();
+// Get all credentials decrypted (requires masterKey)
+export const getDecryptedCredentials = async (
+  masterKey: any
+): Promise<DecryptedCredential[]> => {
+  const raw = await getRawCredentials();
+  return raw.map((cred) => ({
+    ...cred,
+    data: decryptCredentialData(cred.encryptedData, masterKey),
+  }));
+};
+
+// Get credentials by category (decrypted)
+export const getDecryptedCredentialsByCategory = async (
+  category: CredentialCategory,
+  masterKey: any
+): Promise<DecryptedCredential[]> => {
+  const all = await getDecryptedCredentials(masterKey);
   return all.filter((c) => c.category === category);
 };
 
-// Add new credential
+// Add new credential (encrypts before storing)
 export const addCredential = async (
-  credential: Omit<Credential, 'id' | 'createdAt' | 'updatedAt'>
-): Promise<Credential> => {
-  const all = await getCredentials();
+  data: CredentialData,
+  category: CredentialCategory,
+  masterKey: any
+): Promise<DecryptedCredential> => {
+  const all = await getRawCredentials();
+  const id = await generateId();
+  const now = Date.now();
+
   const newCredential: Credential = {
-    ...credential,
-    id: await generateId(),
-    createdAt: Date.now(),
-    updatedAt: Date.now(),
+    id,
+    category,
+    createdAt: now,
+    updatedAt: now,
+    isFavorite: false,
+    encryptedData: encryptCredentialData(data, masterKey),
   };
+
   await AsyncStorage.setItem(
     CREDENTIALS_KEY,
     JSON.stringify([...all, newCredential])
   );
-  return newCredential;
+
+  return { ...newCredential, data };
 };
 
-// Update credential
+// Update credential (re-encrypts)
 export const updateCredential = async (
   id: string,
-  updates: Partial<Credential>
+  data: CredentialData,
+  masterKey: any
 ): Promise<void> => {
-  const all = await getCredentials();
+  const all = await getRawCredentials();
   const updated = all.map((c) =>
     c.id === id
-      ? { ...c, ...updates, updatedAt: Date.now() }
+      ? {
+          ...c,
+          updatedAt: Date.now(),
+          encryptedData: encryptCredentialData(data, masterKey),
+        }
       : c
   );
   await AsyncStorage.setItem(CREDENTIALS_KEY, JSON.stringify(updated));
@@ -65,22 +100,22 @@ export const updateCredential = async (
 
 // Delete credential
 export const deleteCredential = async (id: string): Promise<void> => {
-  const all = await getCredentials();
+  const all = await getRawCredentials();
   const filtered = all.filter((c) => c.id !== id);
   await AsyncStorage.setItem(CREDENTIALS_KEY, JSON.stringify(filtered));
 };
 
-// Search credentials
-export const searchCredentials = async (
+// Search credentials (searches decrypted data in memory)
+export const searchDecryptedCredentials = (
+  credentials: DecryptedCredential[],
   query: string
-): Promise<Credential[]> => {
-  const all = await getCredentials();
+): DecryptedCredential[] => {
   const lower = query.toLowerCase();
-  return all.filter(
+  return credentials.filter(
     (c) =>
-      c.serviceName.toLowerCase().includes(lower) ||
-      c.username?.toLowerCase().includes(lower) ||
-      c.notes?.toLowerCase().includes(lower)
+      c.data.serviceName?.toLowerCase().includes(lower) ||
+      c.data.username?.toLowerCase().includes(lower) ||
+      c.data.notes?.toLowerCase().includes(lower)
   );
 };
 
@@ -91,7 +126,7 @@ export const clearAllCredentials = async (): Promise<void> => {
 
 // Toggle favorite status
 export const toggleFavorite = async (id: string): Promise<void> => {
-  const all = await getCredentials();
+  const all = await getRawCredentials();
   const updated = all.map((c) =>
     c.id === id ? { ...c, isFavorite: !c.isFavorite } : c
   );

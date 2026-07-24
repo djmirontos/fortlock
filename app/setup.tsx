@@ -13,8 +13,11 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import * as SecureStore from 'expo-secure-store';
+import FortLockLogo from '../assets/logo.svg';
 import { useTheme } from '../hooks/useTheme';
 import { setupMasterPassword } from '../services/cryptoService';
+import { useAuthStore } from '../stores/authStore';
 import { FontSize, Spacing, Radius } from '../constants/theme';
 
 interface PasswordRule {
@@ -33,6 +36,7 @@ const PASSWORD_RULES: PasswordRule[] = [
 
 export default function SetupScreen() {
   const theme = useTheme();
+  const { setMasterKey, setDecryptedCredentials, setAuthenticated } = useAuthStore();
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -52,7 +56,17 @@ export default function SetupScreen() {
     if (!canSubmit) return;
     setIsLoading(true);
     try {
-      await setupMasterPassword(password);
+      const masterKey = await setupMasterPassword(password);
+
+      // Store master key for biometric use
+      await SecureStore.setItemAsync(
+        'fortlock_biometric_key',
+        masterKey.toString('base64')
+      );
+
+      setMasterKey(masterKey);
+      setDecryptedCredentials([]);
+      setAuthenticated(true);
       router.replace('/dashboard');
     } catch {
       Alert.alert('Error', 'Failed to set up master password.');
@@ -72,6 +86,7 @@ export default function SetupScreen() {
       >
         {/* Header */}
         <View style={styles.headerSection}>
+          <FortLockLogo width={72} height={72} style={{ marginBottom: 16 }} />
           <Text style={[styles.title, { color: theme.textPrimary }]}>
             Welcome to FortLock ??
           </Text>
@@ -110,7 +125,7 @@ export default function SetupScreen() {
             </TouchableOpacity>
           </View>
 
-          {/* Password Rules — 2 Column Grid */}
+          {/* Password Rules ï¿½ 2 Column Grid */}
           <View style={[styles.rulesContainer, { backgroundColor: theme.surface, borderColor: theme.stroke }]}>
             <View style={styles.rulesGrid}>
               {ruleResults.map((rule, index) => (

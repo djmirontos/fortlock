@@ -11,12 +11,14 @@ import {
   KeyboardAvoidingView,
   Platform,
   Animated,
+  Alert,
 } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../hooks/useTheme";
-import { getCredentials, updateCredential } from "../services/dbService";
-import { Credential, CredentialCategory } from "../types";
+import { useAuthStore } from "../stores/authStore";
+import { updateCredential, getDecryptedCredentials } from "../services/dbService";
+import { DecryptedCredential, CredentialData, CredentialCategory } from "../types";
 import { LightTheme } from "../constants/theme";
 
 const CATEGORIES = [
@@ -40,9 +42,9 @@ const formatExpiryDate = (text: string): string => {
 
 export default function EditCredential() {
   const theme = useTheme();
-  const { id } = useLocalSearchParams();
-  const [credential, setCredential] = useState<Credential | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { id } = useLocalSearchParams<{ id: string }>();
+  const { decryptedCredentials, masterKey, setDecryptedCredentials } = useAuthStore();
+  const credential = decryptedCredentials.find((c) => c.id === id) as DecryptedCredential | undefined;
   const [updating, setUpdating] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showToast, setShowToast] = useState(false);
@@ -68,32 +70,22 @@ export default function EditCredential() {
   const isBanking = category === "banking";
 
   useEffect(() => {
-    const loadCredential = async () => {
-      try {
-        const all = await getCredentials();
-        const found = all.find((c) => c.id === id);
-        if (found) {
-          setCredential(found);
-          setCategory(found.category);
-          setServiceName(found.serviceName || "");
-          setUsername(found.username || "");
-          setPassword(found.password || "");
-          setNotes(found.notes || "");
-          setBankName(found.bankName || "");
-          setCardHolder(found.cardHolder || "");
-          setCardNumber(found.cardNumber ? formatCardNumber(found.cardNumber) : "");
-          setExpiryDate(found.expiryDate || "");
-          setCvv(found.cvv || "");
-        }
-      } catch (error) {
-        console.log("Error loading credential:", error);
-      } finally {
-        setLoading(false);
+    if (credential) {
+      setCategory(credential.category);
+      if (credential.category === "banking") {
+        setBankName(credential.data.serviceName || "");
+        setCardHolder(credential.data.cardHolder || "");
+        setCardNumber(credential.data.cardNumber ? formatCardNumber(credential.data.cardNumber) : "");
+        setExpiryDate(credential.data.expiryDate || "");
+        setCvv(credential.data.cvv || "");
+      } else {
+        setServiceName(credential.data.serviceName || "");
+        setUsername(credential.data.username || "");
+        setPassword(credential.data.password || "");
       }
-    };
-
-    loadCredential();
-  }, [id]);
+      setNotes(credential.data.notes || "");
+    }
+  }, [credential?.id]);
 
   const isFormValid = () => {
     if (isBanking) {
@@ -131,38 +123,35 @@ export default function EditCredential() {
   };
 
   const handleUpdate = async () => {
-    if (!isFormValid() || !credential) return;
+    if (!masterKey || !credential) {
+      Alert.alert("Error", "Session expired. Please login again.");
+      return;
+    }
+    if (!isFormValid()) return;
 
     setUpdating(true);
     try {
-      const updates: Partial<Credential> = {
-        category,
-        password: isBanking ? cardNumber : password,
+      const data: CredentialData = category === "banking" ? {
+        serviceName: bankName,
+        cardHolder: cardHolder.trim(),
+        cardNumber: cardNumber.replace(/\s/g, ""),
+        expiryDate,
+        cvv,
         notes,
-        updatedAt: Date.now(),
+      } : {
+        serviceName,
+        username,
+        password,
+        notes,
       };
 
-      if (isBanking) {
-        Object.assign(updates, {
-          serviceName: bankName,
-          bankName,
-          cardHolder: cardHolder.trim(),
-          cardNumber: cardNumber.replace(/\s/g, ""),
-          expiryDate,
-          cvv,
-        });
-      } else {
-        Object.assign(updates, {
-          serviceName,
-          username,
-          password,
-        });
-      }
-
-      await updateCredential(credential.id, updates);
+      await updateCredential(credential.id, data, masterKey);
+      const updated = await getDecryptedCredentials(masterKey);
+      setDecryptedCredentials(updated);
       showSuccessToast();
     } catch (error) {
-      console.log("Error updating credential:", error);
+      console.error("Update error:", error);
+      Alert.alert("Error", "Failed to update credential.");
     } finally {
       setUpdating(false);
     }
@@ -177,6 +166,30 @@ export default function EditCredential() {
           translucent={false}
         />
         <ActivityIndicator size="large" color={theme.primary} style={{ marginTop: 200 }} />
+      </View>
+    );
+  }
+
+  if (!credential) {
+    return (
+      <View style={[styles.container, { backgroundColor: theme.background }]}>
+        <StatusBar
+          barStyle={theme === LightTheme ? "dark-content" : "light-content"}
+          backgroundColor={theme.surface}
+          translucent={false}
+        />
+        <View style={[styles.header, { backgroundColor: theme.surface }]}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <Ionicons name="chevron-back" size={24} color={theme.primary} />
+          </TouchableOpacity>
+          <Text style={[styles.headerTitle, { color: theme.textPrimary }]}>
+            Edit Credential
+          </Text>
+          <View style={{ width: 40 }} />
+        </View>
+        <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+          <Text style={{ color: theme.textSecondary }}>Credential not found</Text>
+        </View>
       </View>
     );
   }

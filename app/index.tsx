@@ -5,7 +5,6 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  Image,
   ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
@@ -14,14 +13,17 @@ import {
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as LocalAuthentication from 'expo-local-authentication';
+import * as SecureStore from 'expo-secure-store';
+import FortLockLogo from '../assets/logo.svg';
 import { useAuthStore } from '../stores/authStore';
 import { useTheme } from '../hooks/useTheme';
-import { verifyMasterPassword, hasMasterPassword } from '../services/cryptoService';
+import { verifyAndGetMasterKey, hasMasterPassword } from '../services/cryptoService';
+import { getDecryptedCredentials } from '../services/dbService';
 import { FontSize, Spacing, Radius } from '../constants/theme';
 
 export default function LoginScreen() {
   const theme = useTheme();
-  const { setAuthenticated, setBiometricAvailable, biometricAvailable } = useAuthStore();
+  const { setAuthenticated, setBiometricAvailable, biometricAvailable, setMasterKey, setDecryptedCredentials } = useAuthStore();
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -49,8 +51,11 @@ export default function LoginScreen() {
     }
     setIsLoading(true);
     try {
-      const isValid = await verifyMasterPassword(password);
-      if (isValid) {
+      const masterKey = await verifyAndGetMasterKey(password);
+      if (masterKey) {
+        const decrypted = await getDecryptedCredentials(masterKey);
+        setMasterKey(masterKey);
+        setDecryptedCredentials(decrypted);
         setAuthenticated(true);
         router.replace('/dashboard');
       } else {
@@ -71,8 +76,20 @@ export default function LoginScreen() {
         fallbackLabel: 'Use Password',
       });
       if (result.success) {
-        setAuthenticated(true);
-        router.replace('/dashboard');
+        const keyBase64 = await SecureStore.getItemAsync(
+          'fortlock_biometric_key'
+        );
+        if (keyBase64) {
+          const { Buffer: BufferClass } = require('buffer');
+          const masterKey = BufferClass.from(keyBase64, 'base64');
+          const decrypted = await getDecryptedCredentials(masterKey);
+          setMasterKey(masterKey);
+          setDecryptedCredentials(decrypted);
+          setAuthenticated(true);
+          router.replace('/dashboard');
+        } else {
+          Alert.alert('Error', 'Please use your master password to unlock.');
+        }
       }
     } catch {
       Alert.alert('Error', 'Biometric authentication failed.');
@@ -94,10 +111,7 @@ export default function LoginScreen() {
     >
       {/* Brand Section */}
       <View style={styles.brandSection}>
-        <Image
-          source={require('../assets/icon.png')}
-          style={styles.logo}
-        />
+        <FortLockLogo width={80} height={80} />
         <Text style={[styles.appName, { color: theme.textPrimary }]}>
           FortLock
         </Text>
@@ -176,12 +190,6 @@ const styles = StyleSheet.create({
   brandSection: {
     alignItems: 'center',
     marginBottom: Spacing.xxl,
-  },
-  logo: {
-    width: 64,
-    height: 64,
-    marginBottom: Spacing.md,
-    borderRadius: Radius.md,
   },
   appName: {
     fontSize: FontSize.xxxl,

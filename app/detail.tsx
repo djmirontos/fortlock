@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useRef } from "react";
+﻿import { useState, useRef } from "react";
 import {
   View,
   Text,
@@ -8,22 +8,21 @@ import {
   Alert,
   Clipboard,
   StatusBar,
-  ActivityIndicator,
   Animated,
 } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../hooks/useTheme";
-import { getCredentials, deleteCredential } from "../services/dbService";
+import { useAuthStore } from "../stores/authStore";
+import { deleteCredential, getDecryptedCredentials } from "../services/dbService";
 import { LightTheme } from "../constants/theme";
-import { Credential } from "../types";
+import { DecryptedCredential } from "../types";
 import ServiceLogo from "../components/ServiceLogo";
 
 export default function DetailScreen() {
   const theme = useTheme();
-  const { id } = useLocalSearchParams();
-  const [credential, setCredential] = useState<Credential | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { id } = useLocalSearchParams<{ id: string }>();
+  const { decryptedCredentials, masterKey, setDecryptedCredentials } = useAuthStore();
   const [showPassword, setShowPassword] = useState(false);
   const [showCardNumber, setShowCardNumber] = useState(false);
   const [showCVV, setShowCVV] = useState(false);
@@ -32,21 +31,7 @@ export default function DetailScreen() {
   const toastOpacity = useRef(new Animated.Value(0)).current;
   const toastTranslateY = useRef(new Animated.Value(-20)).current;
 
-  useEffect(() => {
-    const loadCredential = async () => {
-      try {
-        const credentials = await getCredentials();
-        const found = credentials.find((c) => c.id === id);
-        setCredential(found || null);
-      } catch (error) {
-        console.log("Error loading credential:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadCredential();
-  }, [id]);
+  const credential = decryptedCredentials.find((c) => c.id === id) as DecryptedCredential | undefined;
 
   const showSuccessToast = (message: string) => {
     setToastMessage(message);
@@ -88,12 +73,16 @@ export default function DetailScreen() {
       "Delete Credential",
       "This action cannot be undone.",
       [
-        { text: "Cancel", onPress: () => {} },
+        { text: "Cancel", style: "cancel" },
         {
           text: "Delete",
           onPress: async () => {
             try {
               await deleteCredential(credential!.id);
+              if (masterKey) {
+                const updated = await getDecryptedCredentials(masterKey);
+                setDecryptedCredentials(updated);
+              }
               router.back();
             } catch (error) {
               Alert.alert("Error", "Failed to delete credential");
@@ -108,19 +97,6 @@ export default function DetailScreen() {
   const handleEdit = () => {
     router.push({ pathname: "/edit", params: { id: credential!.id } });
   };
-
-  if (loading) {
-    return (
-      <View style={[styles.container, { backgroundColor: theme.background }]}>
-        <StatusBar
-          barStyle={theme === LightTheme ? "dark-content" : "light-content"}
-          backgroundColor={theme.surface}
-          translucent={false}
-        />
-        <ActivityIndicator size="large" color={theme.primary} style={{ marginTop: 200 }} />
-      </View>
-    );
-  }
 
   if (!credential) {
     return (
@@ -149,7 +125,7 @@ export default function DetailScreen() {
   const isBanking = credential.category === "banking";
   const titleText = isBanking ? "Banking Detail" : "Credential Detail";
   const copyButtonText = isBanking ? "Copy Card Number" : "Copy Password";
-  const copyValue = isBanking ? credential.cardNumber : credential.password;
+  const copyValue = isBanking ? credential.data.cardNumber : credential.data.password;
 
   const formatCardNumber = (number: string): string => {
     return number.replace(/\s/g, "").match(/.{1,4}/g)?.join(" ") || number;
@@ -189,9 +165,9 @@ export default function DetailScreen() {
       >
         {/* Service Card */}
         <View style={[styles.serviceCard, { backgroundColor: theme.surface }]}>
-          <ServiceLogo serviceName={credential.serviceName} size={72} />
+          <ServiceLogo serviceName={credential.data.serviceName} size={72} />
           <Text style={[styles.serviceName, { color: theme.textPrimary }]}>
-            {credential.serviceName}
+            {credential.data.serviceName}
           </Text>
         </View>
 
@@ -206,11 +182,11 @@ export default function DetailScreen() {
                     Card Holder
                   </Text>
                   <Text style={[styles.fieldValue, { color: theme.textPrimary }]}>
-                    {credential.cardHolder || "—"}
+                    {credential.data.cardHolder || "—"}
                   </Text>
                 </View>
                 <TouchableOpacity
-                  onPress={() => handleCopy(credential.cardHolder || "", "Card holder")}
+                  onPress={() => handleCopy(credential.data.cardHolder || "", "Card holder")}
                   hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                 >
                   <Ionicons name="copy-outline" size={20} color={theme.primary} />
@@ -224,7 +200,7 @@ export default function DetailScreen() {
                     Card Number
                   </Text>
                   <Text style={[styles.fieldValue, { color: theme.textPrimary }]}>
-                    {showCardNumber ? formatCardNumber(credential.cardNumber!) : maskCardNumber(credential.cardNumber!)}
+                    {showCardNumber ? formatCardNumber(credential.data.cardNumber!) : maskCardNumber(credential.data.cardNumber!)}
                   </Text>
                 </View>
                 <TouchableOpacity
@@ -239,7 +215,7 @@ export default function DetailScreen() {
                   />
                 </TouchableOpacity>
                 <TouchableOpacity
-                  onPress={() => handleCopy(credential.cardNumber || "", "Card number")}
+                  onPress={() => handleCopy(credential.data.cardNumber || "", "Card number")}
                   hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                 >
                   <Ionicons name="copy-outline" size={20} color={theme.primary} />
@@ -254,11 +230,11 @@ export default function DetailScreen() {
                       Expiry Date
                     </Text>
                     <Text style={[styles.fieldValue, { color: theme.textPrimary }]}>
-                      {credential.expiryDate || "—"}
+                      {credential.data.expiryDate || "—"}
                     </Text>
                   </View>
                   <TouchableOpacity
-                    onPress={() => handleCopy(credential.expiryDate || "", "Expiry date")}
+                    onPress={() => handleCopy(credential.data.expiryDate || "", "Expiry date")}
                     hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                   >
                     <Ionicons name="copy-outline" size={20} color={theme.primary} />
@@ -271,7 +247,7 @@ export default function DetailScreen() {
                       CVV
                     </Text>
                     <Text style={[styles.fieldValue, { color: theme.textPrimary }]}>
-                      {showCVV ? credential.cvv : "•••"}
+                      {showCVV ? credential.data.cvv : "•••"}
                     </Text>
                   </View>
                   <TouchableOpacity
@@ -286,7 +262,7 @@ export default function DetailScreen() {
                     />
                   </TouchableOpacity>
                   <TouchableOpacity
-                    onPress={() => handleCopy(credential.cvv || "", "CVV")}
+                    onPress={() => handleCopy(credential.data.cvv || "", "CVV")}
                     hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                   >
                     <Ionicons name="copy-outline" size={20} color={theme.primary} />
@@ -303,11 +279,11 @@ export default function DetailScreen() {
                     Username
                   </Text>
                   <Text style={[styles.fieldValue, { color: theme.textPrimary }]}>
-                    {credential.username || "—"}
+                    {credential.data.username || "—"}
                   </Text>
                 </View>
                 <TouchableOpacity
-                  onPress={() => handleCopy(credential.username || "", "Username")}
+                  onPress={() => handleCopy(credential.data.username || "", "Username")}
                   hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                 >
                   <Ionicons name="copy-outline" size={20} color={theme.primary} />
@@ -321,7 +297,7 @@ export default function DetailScreen() {
                     Password
                   </Text>
                   <Text style={[styles.fieldValue, { color: theme.textPrimary }]}>
-                    {showPassword ? credential.password : "••••••••"}
+                    {showPassword ? credential.data.password : "••••••••"}
                   </Text>
                 </View>
                 <TouchableOpacity
@@ -336,7 +312,7 @@ export default function DetailScreen() {
                   />
                 </TouchableOpacity>
                 <TouchableOpacity
-                  onPress={() => handleCopy(credential.password || "", "Password")}
+                  onPress={() => handleCopy(credential.data.password || "", "Password")}
                   hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                 >
                   <Ionicons name="copy-outline" size={20} color={theme.primary} />
@@ -346,18 +322,18 @@ export default function DetailScreen() {
           )}
 
           {/* Notes (if exists) */}
-          {credential.notes && (
+          {credential.data.notes && (
             <View style={[styles.fieldCard, { backgroundColor: theme.surface }]}>
               <View style={{ flex: 1 }}>
                 <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>
                   Notes
                 </Text>
                 <Text style={[styles.fieldValue, { color: theme.textPrimary }]}>
-                  {credential.notes}
+                  {credential.data.notes}
                 </Text>
               </View>
               <TouchableOpacity
-                onPress={() => handleCopy(credential.notes || "", "Notes")}
+                onPress={() => handleCopy(credential.data.notes || "", "Notes")}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               >
                 <Ionicons name="copy-outline" size={20} color={theme.primary} />

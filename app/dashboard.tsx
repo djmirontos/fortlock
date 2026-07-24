@@ -21,11 +21,12 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router, useFocusEffect } from "expo-router";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { useAuthStore } from "../stores/authStore";
-import { getCredentials, toggleFavorite, deleteCredential } from "../services/dbService";
+import { getDecryptedCredentials, toggleFavorite, deleteCredential, searchDecryptedCredentials } from "../services/dbService";
 import { CardColors, LightTheme } from "../constants/theme";
 import { useTheme } from "../hooks/useTheme";
-import { Credential } from "../types";
+import { DecryptedCredential } from "../types";
 import ServiceLogo from "../components/ServiceLogo";
+import { useAutoLock } from "../hooks/useAutoLock";
 
 if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -91,17 +92,19 @@ const formatDate = (timestamp: number): string => {
 
 export default function Dashboard() {
   const insets = useSafeAreaInsets();
-  const { logout } = useAuthStore();
+  const { decryptedCredentials, masterKey, setDecryptedCredentials, logout } = useAuthStore();
   const theme = useTheme();
-  const [credentials, setCredentials] = useState<Credential[]>([]);
-  const [filtered, setFiltered] = useState<Credential[]>([]);
+  const [credentials, setCredentials] = useState<DecryptedCredential[]>([]);
+  const [filtered, setFiltered] = useState<DecryptedCredential[]>([]);
   const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState("all");
   const [sortBy, setSortBy] = useState("recent");
-  const [selectedCredential, setSelectedCredential] = useState<Credential | null>(null);
+  const [selectedCredential, setSelectedCredential] = useState<DecryptedCredential | null>(null);
   const [showModal, setShowModal] = useState(false);
   const modalAnimation = useRef(new Animated.Value(0)).current;
   const addButtonScale = useRef(new Animated.Value(1)).current;
+
+  useAutoLock();
 
   const closeModal = () => {
     Animated.timing(modalAnimation, {
@@ -128,15 +131,15 @@ export default function Dashboard() {
 
   useFocusEffect(
     useCallback(() => {
-      loadCredentials();
-    }, [])
+      if (masterKey) {
+        getDecryptedCredentials(masterKey).then((creds) => {
+          setDecryptedCredentials(creds);
+          setCredentials(creds);
+        });
+      }
+    }, [masterKey])
   );
   useEffect(() => { filterCredentials(); }, [credentials, search, activeCategory, sortBy]);
-
-  const loadCredentials = async () => {
-    const data = await getCredentials();
-    setCredentials(data);
-  };
 
   const filterCredentials = () => {
     let result = [...credentials];
@@ -144,15 +147,10 @@ export default function Dashboard() {
       result = result.filter((c) => c.category === activeCategory);
     }
     if (search.trim()) {
-      const lower = search.toLowerCase();
-      result = result.filter(
-        (c) =>
-          c.serviceName.toLowerCase().includes(lower) ||
-          c.username?.toLowerCase().includes(lower)
-      );
+      result = searchDecryptedCredentials(result, search);
     }
     if (sortBy === "alphabetical") {
-      result.sort((a, b) => a.serviceName.localeCompare(b.serviceName));
+      result.sort((a, b) => a.data.serviceName.localeCompare(b.data.serviceName));
     } else {
       result.sort((a, b) => b.updatedAt - a.updatedAt);
     }
@@ -193,10 +191,10 @@ export default function Dashboard() {
     );
   };
 
-  const renderCard = ({ item }: { item: Credential }) => {
+  const renderCard = ({ item }: { item: DecryptedCredential }) => {
     const displayValue = item.category === "banking"
-      ? item.cardNumber ? "**** " + item.cardNumber.slice(-4) : ""
-      : item.username || "";
+      ? item.data.cardNumber ? "**** " + item.data.cardNumber.slice(-4) : ""
+      : item.data.username || "";
     const categoryColor = getCategoryColor(item.category);
 
     return (
@@ -205,12 +203,12 @@ export default function Dashboard() {
         activeOpacity={0.7}
         onPress={() => router.push({ pathname: "/detail", params: { id: item.id } })}
       >
-        <ServiceLogo serviceName={item.serviceName} size={48} />
+        <ServiceLogo serviceName={item.data.serviceName} size={48} />
 
         <View style={styles.cardContent}>
           <View style={styles.cardHeader}>
             <Text style={[styles.cardTitle, { color: theme.textPrimary }]} numberOfLines={1}>
-              {item.serviceName}
+              {item.data.serviceName}
             </Text>
             <Text style={[styles.timestamp, { color: theme.textSecondary }]}>
               {getTimeAgo(item.createdAt)}
@@ -457,18 +455,18 @@ export default function Dashboard() {
             <View style={styles.modalHeader}>
               <View style={{ flex: 1 }}>
                 <Text style={[styles.modalServiceName, { color: theme.textPrimary }]}>
-                  {selectedCredential.serviceName}
+                  {selectedCredential.data.serviceName}
                 </Text>
                 <Text style={[styles.modalUsername, { color: theme.textSecondary }]}>
                   {selectedCredential.category === "banking"
-                    ? selectedCredential.cardNumber ? "**** " + selectedCredential.cardNumber.slice(-4) : ""
-                    : selectedCredential.username || ""}
+                    ? selectedCredential.data.cardNumber ? "**** " + selectedCredential.data.cardNumber.slice(-4) : ""
+                    : selectedCredential.data.username || ""}
                 </Text>
                 <Text style={{ fontSize: 11, color: theme.textSecondary, marginTop: 4 }}>
                   Added {formatDate(selectedCredential.createdAt)}
                 </Text>
               </View>
-              <ServiceLogo serviceName={selectedCredential.serviceName} size={40} />
+              <ServiceLogo serviceName={selectedCredential.data.serviceName} size={40} />
             </View>
 
             {/* Options */}
@@ -478,8 +476,8 @@ export default function Dashboard() {
                 style={[styles.modalOption, { borderBottomColor: theme.stroke }]}
                 onPress={() => {
                   const text = selectedCredential.category === "banking"
-                    ? selectedCredential.cardNumber || ""
-                    : selectedCredential.password || "";
+                    ? selectedCredential.data.cardNumber || ""
+                    : selectedCredential.data.password || "";
                   const label = selectedCredential.category === "banking" ? "Card number" : "Password";
                   handleCopy(text, label);
                   closeModal();
@@ -496,7 +494,10 @@ export default function Dashboard() {
                 style={[styles.modalOption, { borderBottomColor: theme.stroke }]}
                 onPress={async () => {
                   await toggleFavorite(selectedCredential.id);
-                  loadCredentials();
+                  if (masterKey) {
+                    const updated = await getDecryptedCredentials(masterKey);
+                    setDecryptedCredentials(updated);
+                  }
                   closeModal();
                 }}
               >
@@ -516,14 +517,17 @@ export default function Dashboard() {
                 onPress={() => {
                   Alert.alert(
                     "Delete Credential",
-                    `Are you sure you want to delete "${selectedCredential.serviceName}"?`,
+                    `Are you sure you want to delete "${selectedCredential.data.serviceName}"?`,
                     [
                       { text: "Cancel", onPress: () => {} },
                       {
                         text: "Delete",
                         onPress: async () => {
                           await deleteCredential(selectedCredential.id);
-                          loadCredentials();
+                          if (masterKey) {
+                            const updated = await getDecryptedCredentials(masterKey);
+                            setDecryptedCredentials(updated);
+                          }
                           closeModal();
                         },
                         style: "destructive",

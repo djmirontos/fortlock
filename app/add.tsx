@@ -11,12 +11,15 @@ import {
   Platform,
   ActivityIndicator,
   Animated,
+  Alert,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useTheme } from "../hooks/useTheme";
-import { addCredential } from "../services/dbService";
+import { useAuthStore } from "../stores/authStore";
+import { addCredential, getDecryptedCredentials } from "../services/dbService";
+import { CredentialData } from "../types";
 import { LightTheme } from "../constants/theme";
 
 const CATEGORIES = [
@@ -52,8 +55,8 @@ const formatExpiryDate = (text: string): string => {
 };
 
 export default function AddCredential() {
-  const insets = useSafeAreaInsets();
   const theme = useTheme();
+  const { masterKey, setDecryptedCredentials } = useAuthStore();
   const [category, setCategory] = useState("general");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -134,35 +137,36 @@ export default function AddCredential() {
   const handleSave = async () => {
     if (!isFormValid()) return;
 
+    if (!masterKey) {
+      Alert.alert("Session Expired", "Please login again.");
+      router.replace("/");
+      return;
+    }
+
     setLoading(true);
     try {
-      const credential = {
-        category,
-        password: isBanking ? cardNumber : password,
+      const data: CredentialData = category === "banking" ? {
+        serviceName: bankName,
+        cardHolder: cardHolder.trim(),
+        cardNumber: cardNumber.replace(/\s/g, ""),
+        expiryDate,
+        cvv,
         notes,
-        updatedAt: Date.now(),
+      } : {
+        serviceName,
+        username,
+        password,
+        notes,
       };
 
-      if (isBanking) {
-        Object.assign(credential, {
-          serviceName: bankName,
-          bankName,
-          cardHolder: cardHolder.trim(),
-          cardNumber: cardNumber.replace(/\s/g, ""),
-          expiryDate,
-          cvv,
-        });
-      } else {
-        Object.assign(credential, {
-          serviceName,
-          username,
-          password,
-        });
-      }
-
-      await addCredential(credential);
-      clearForm();
+      await addCredential(data, category as any, masterKey);
+      const updated = await getDecryptedCredentials(masterKey);
+      setDecryptedCredentials(updated);
       showSuccessToast();
+      clearForm();
+    } catch (error) {
+      console.error("Save error:", error);
+      Alert.alert("Error", "Failed to save credential. Please try again.");
     } finally {
       setLoading(false);
     }

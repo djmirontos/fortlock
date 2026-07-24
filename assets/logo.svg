@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#7992ff"/><stop offset="52%" stop-color="#4F6FFF"/><stop offset="100%" stop-color="#3a52bd"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.28" r="0.7">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.24"/><stop offset="60%" stop-color="#ffffff" stop-opacity="0.04"/><stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="shield" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.22"/><stop offset="100%" stop-color="#ffffff" stop-opacity="0.05"/>
+    </linearGradient>
+    <linearGradient id="lockg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FFFFFF"/><stop offset="100%" stop-color="#E9EDFF"/>
+    </linearGradient>
+    <filter id="shadow" x="-40%" y="-40%" width="180%" height="180%">
+      <feDropShadow dx="0" dy="12" stdDeviation="16" flood-color="#111a5c" flood-opacity="0.40"/>
+    </filter>
+    <clipPath id="round"><rect x="0" y="0" width="1024" height="1024" rx="228" ry="228"/></clipPath>
+  </defs>
+  <g clip-path="url(#round)">
+    <rect x="0" y="0" width="1024" height="1024" fill="url(#bg)"/>
+    <rect x="0" y="0" width="1024" height="1024" fill="url(#glow)"/>
+    <path d="M262 300 C262 258 296 224 338 224 L686 224 C728 224 762 258 762 300 L762 474 C762 626 662 736 512 816 C362 736 262 626 262 474 Z" fill="url(#shield)" stroke="#ffffff" stroke-opacity="0.30" stroke-width="2.5"/>
+    <g filter="url(#shadow)">
+      <path d="M456 494 L456 420 A56 56 0 0 1 568 420 L568 494" fill="none" stroke="#FFFFFF" stroke-width="36" stroke-linecap="round"/>
+      <rect x="404" y="474" width="216" height="180" rx="38" fill="url(#lockg)"/>
+      <circle cx="512" cy="544" r="23" fill="#4F6FFF"/>
+      <path d="M500 544 L524 544 L531 612 Q512 623 493 612 Z" fill="#4F6FFF"/>
+    </g>
+  </g>
+</svg>
