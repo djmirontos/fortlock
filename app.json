@@ -1,27 +1,30 @@
 {
   "expo": {
-    "name": "fortlock",
+    "name": "FortLock",
     "slug": "fortlock",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "scheme": "fortlock",
     "newArchEnabled": true,
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#4F6FFF"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.daryljm.fortlock"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#4F6FFF"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false,
-      "softwareKeyboardLayoutMode": "pan"
+      "softwareKeyboardLayoutMode": "pan",
+      "package": "com.daryljm.fortlock"
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -30,8 +33,6 @@
       "expo-router",
       "expo-secure-store"
     ],
-    "scheme": "fortlock",
-    "userInterfaceStyle": "automatic",
     "extra": {
       "router": {},
       "eas": {

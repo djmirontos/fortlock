@@ -16,6 +16,7 @@ import {
   Modal,
   ScrollView,
   Easing,
+  Image,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router, useFocusEffect } from "expo-router";
@@ -256,9 +257,17 @@ export default function Dashboard() {
       />
 
       {/* Header — outside FlatList, guaranteed full width */}
-      <View style={[styles.header, { backgroundColor: theme.surface }]}>
-        <View>
-          <Text style={[styles.greeting, { color: theme.textPrimary }]}>{getGreeting()} 👋</Text>
+      <View style={[styles.header, { backgroundColor: theme.surface, flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingTop: 16, paddingBottom: 16 }]}>
+        <View style={styles.headerLeft}>
+          <Image
+            source={require("../assets/logo.png")}
+            style={styles.headerLogo}
+          />
+        </View>
+        <View style={styles.headerCenter}>
+          <Text style={[styles.greeting, { color: theme.textPrimary }]}>
+            {getGreeting()} 👋
+          </Text>
           <Text style={[styles.count, { color: theme.textSecondary }]}>
             {credentials.length} password{credentials.length !== 1 ? "s" : ""} stored
           </Text>
@@ -576,6 +585,21 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  headerLeft: {
+    width: 44,
+    alignItems: "flex-start",
+    justifyContent: "center",
+  },
+  headerLogo: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+  },
+  headerCenter: {
+    flex: 1,
     alignItems: "center",
     justifyContent: "center",
   },

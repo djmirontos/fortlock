@@ -269,7 +269,7 @@ export default function Settings() {
             activeOpacity={0.7}
           >
             <View style={styles.rowLeft}>
-              <Ionicons name="download-outline" size={20} color={theme.primary} />
+              <Ionicons name="cloud-download-outline" size={20} color={theme.primary} />
               <Text style={[styles.rowText, { color: theme.textPrimary }]}>Export Backup</Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color={theme.textSecondary} />
@@ -282,7 +282,7 @@ export default function Settings() {
             activeOpacity={0.7}
           >
             <View style={styles.rowLeft}>
-              <Ionicons name="upload-outline" size={20} color={theme.primary} />
+              <Ionicons name="cloud-upload-outline" size={20} color={theme.primary} />
               <Text style={[styles.rowText, { color: theme.textPrimary }]}>Import Backup</Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color={theme.textSecondary} />
