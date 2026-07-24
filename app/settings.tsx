@@ -20,6 +20,7 @@ import { useTheme } from "../hooks/useTheme";
 import { useAuthStore } from "../stores/authStore";
 import { clearAllCredentials, getRawCredentials, getDecryptedCredentials } from "../services/dbService";
 import { clearAllSecureData, changeMasterPassword } from "../services/cryptoService";
+import { exportBackup, importBackup } from "../services/backupService";
 import * as LocalAuthentication from "expo-local-authentication";
 import { LightTheme } from "../constants/theme";
 
@@ -48,6 +49,8 @@ export default function Settings() {
   const [changeProgress, setChangeProgress] = useState(0);
   const [showCurrentPw, setShowCurrentPw] = useState(false);
   const [showNewPw, setShowNewPw] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
 
   const timerOptions = [
     { label: "1 minute", value: 1 },
@@ -116,12 +119,47 @@ export default function Settings() {
     }
   };
 
-  const handleExportBackup = () => {
-    Alert.alert("Export Backup", "Export feature coming soon!");
+  const handleExport = async () => {
+    setIsExporting(true);
+    try {
+      await exportBackup();
+    } catch (error: any) {
+      Alert.alert(
+        "Export Failed",
+        error.message || "Could not export backup. Please try again."
+      );
+    } finally {
+      setIsExporting(false);
+    }
   };
 
-  const handleImportBackup = () => {
-    Alert.alert("Import Backup", "Import feature coming soon!");
+  const handleImport = async () => {
+    setIsImporting(true);
+    try {
+      const count = await importBackup();
+      if (count === 0) {
+        Alert.alert(
+          "Nothing Imported",
+          "No new credentials found in the backup file. All credentials may already exist."
+        );
+      } else {
+        if (masterKey) {
+          const updated = await getDecryptedCredentials(masterKey);
+          setDecryptedCredentials(updated);
+        }
+        Alert.alert(
+          "Import Successful! 🎉",
+          `${count} credential${count !== 1 ? "s" : ""} imported successfully.`
+        );
+      }
+    } catch (error: any) {
+      Alert.alert(
+        "Import Failed",
+        error.message || "Could not read backup file. Make sure it's a valid FortLock backup."
+      );
+    } finally {
+      setIsImporting(false);
+    }
   };
 
   const handleAutoLockTimerAlert = () => {
@@ -265,28 +303,46 @@ export default function Settings() {
           {/* Export Backup */}
           <TouchableOpacity
             style={[styles.row, { borderBottomWidth: 1, borderBottomColor: theme.stroke }]}
-            onPress={handleExportBackup}
+            onPress={handleExport}
+            disabled={isExporting || isImporting}
             activeOpacity={0.7}
           >
             <View style={styles.rowLeft}>
               <Ionicons name="cloud-download-outline" size={20} color={theme.primary} />
               <Text style={[styles.rowText, { color: theme.textPrimary }]}>Export Backup</Text>
             </View>
-            <Ionicons name="chevron-forward" size={20} color={theme.textSecondary} />
+            {isExporting ? (
+              <ActivityIndicator size="small" color={theme.primary} />
+            ) : (
+              <Ionicons name="chevron-forward" size={20} color={theme.textSecondary} />
+            )}
           </TouchableOpacity>
 
           {/* Import Backup */}
           <TouchableOpacity
             style={[styles.row, { borderBottomWidth: 1, borderBottomColor: theme.stroke }]}
-            onPress={handleImportBackup}
+            onPress={handleImport}
+            disabled={isExporting || isImporting}
             activeOpacity={0.7}
           >
             <View style={styles.rowLeft}>
               <Ionicons name="cloud-upload-outline" size={20} color={theme.primary} />
               <Text style={[styles.rowText, { color: theme.textPrimary }]}>Import Backup</Text>
             </View>
-            <Ionicons name="chevron-forward" size={20} color={theme.textSecondary} />
+            {isImporting ? (
+              <ActivityIndicator size="small" color={theme.primary} />
+            ) : (
+              <Ionicons name="chevron-forward" size={20} color={theme.textSecondary} />
+            )}
           </TouchableOpacity>
+
+          {/* Backup Info */}
+          <View style={[styles.infoBox, { backgroundColor: theme.background }]}>
+            <Ionicons name="shield-checkmark-outline" size={16} color={theme.primary} />
+            <Text style={[styles.infoText, { color: theme.textSecondary }]}>
+              Backup files are encrypted. Only FortLock with your master password can read them.
+            </Text>
+          </View>
 
           {/* Auto-lock Timer */}
           <TouchableOpacity
@@ -726,5 +782,18 @@ const styles = StyleSheet.create({
   updateButtonText: {
     fontSize: 16,
     fontWeight: "700",
+  },
+  infoBox: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    marginTop: 2,
+  },
+  infoText: {
+    flex: 1,
+    fontSize: 12,
+    lineHeight: 18,
   },
 });
