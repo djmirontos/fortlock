@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from "react";
+﻿import { useState, useEffect, useRef } from "react";
 import { View, Image, Text, StyleSheet } from "react-native";
 import * as FileSystem from "expo-file-system/legacy";
 
@@ -94,14 +94,21 @@ export default function ServiceLogo({ serviceName, size = 48 }: ServiceLogoProps
   const [logoState, setLogoState] = useState<"placeholder" | "cached">("placeholder");
   const [logoUri, setLogoUri] = useState<string>("");
   const [domain, setDomain] = useState<string>("");
+  const isMounted = useRef(true);
+
+  useEffect(() => {
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
 
   useEffect(() => {
     const loadLogo = async () => {
       const foundDomain = getDomain(serviceName);
-      setDomain(foundDomain);
+      if (isMounted.current) setDomain(foundDomain);
 
       if (!foundDomain) {
-        setLogoState("placeholder");
+        if (isMounted.current) setLogoState("placeholder");
         return;
       }
 
@@ -113,13 +120,15 @@ export default function ServiceLogo({ serviceName, size = 48 }: ServiceLogoProps
         const info = await FileSystem.getInfoAsync(cachePath);
         if (info.exists) {
           console.log("Using cached logo for:", serviceName);
-          setLogoUri(cachePath);
-          setLogoState("cached");
+          if (isMounted.current) {
+            setLogoUri(cachePath);
+            setLogoState("cached");
+          }
           return;
         }
 
         // Not cached, show placeholder and download in background
-        setLogoState("placeholder");
+        if (isMounted.current) setLogoState("placeholder");
 
         // Background download from Clearbit
         const clearbitUrl = `https://logo.clearbit.com/${foundDomain}`;
@@ -128,8 +137,10 @@ export default function ServiceLogo({ serviceName, size = 48 }: ServiceLogoProps
           const result = await FileSystem.downloadAsync(clearbitUrl, cachePath);
           if (result.status === 200) {
             console.log("Cached Clearbit logo for:", serviceName);
-            setLogoUri(cachePath);
-            setLogoState("cached");
+            if (isMounted.current) {
+              setLogoUri(cachePath);
+              setLogoState("cached");
+            }
             return;
           }
         } catch (clearbitError) {
@@ -142,8 +153,10 @@ export default function ServiceLogo({ serviceName, size = 48 }: ServiceLogoProps
           const result = await FileSystem.downloadAsync(faviconUrl, cachePath);
           if (result.status === 200) {
             console.log("Cached Google favicon for:", serviceName);
-            setLogoUri(cachePath);
-            setLogoState("cached");
+            if (isMounted.current) {
+              setLogoUri(cachePath);
+              setLogoState("cached");
+            }
             return;
           }
         } catch (faviconError) {
@@ -151,10 +164,10 @@ export default function ServiceLogo({ serviceName, size = 48 }: ServiceLogoProps
         }
 
         // Both failed, stay on placeholder
-        setLogoState("placeholder");
+        if (isMounted.current) setLogoState("placeholder");
       } catch (error) {
         console.log("Logo load error for:", serviceName, error);
-        setLogoState("placeholder");
+        if (isMounted.current) setLogoState("placeholder");
       }
     };
 

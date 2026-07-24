@@ -5,6 +5,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useColorScheme } from 'react-native';
 import { useAuthStore } from '../stores/authStore';
 import { hasMasterPassword } from '../services/cryptoService';
+import ErrorBoundary from '../components/ErrorBoundary';
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
@@ -23,21 +24,26 @@ export default function RootLayout() {
     (themeMode === 'system' && colorScheme === 'dark');
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#121212' }}>
-      <StatusBar style={isDark ? 'light' : 'dark'} />
-      <Stack screenOptions={{
-        headerShown: false,
-        contentStyle: { backgroundColor: '#121212' },
-        animation: 'fade',
-      }}>
-        <Stack.Screen name="index" />
-        <Stack.Screen name="setup" />
-        <Stack.Screen name="dashboard" />
-        <Stack.Screen name="add" />
-        <Stack.Screen name="detail" />
-        <Stack.Screen name="edit" />
-        <Stack.Screen name="settings" />
-      </Stack>
-    </View>
+    <ErrorBoundary>
+      <View style={{ flex: 1, backgroundColor: '#121212' }}>
+        <StatusBar style={isDark ? 'light' : 'dark'} />
+        <Stack screenOptions={{
+          headerShown: false,
+          contentStyle: { backgroundColor: '#121212' },
+          animation: 'slide_from_right',
+          animationDuration: 250,
+          gestureEnabled: true,
+          gestureDirection: 'horizontal',
+        }}>
+          <Stack.Screen name="index" options={{ animation: 'fade' }} />
+          <Stack.Screen name="setup" options={{ animation: 'fade' }} />
+          <Stack.Screen name="dashboard" options={{ animation: 'fade' }} />
+          <Stack.Screen name="add" options={{ animation: 'slide_from_bottom' }} />
+          <Stack.Screen name="detail" options={{ animation: 'slide_from_right' }} />
+          <Stack.Screen name="edit" options={{ animation: 'slide_from_right' }} />
+          <Stack.Screen name="settings" options={{ animation: 'slide_from_right' }} />
+        </Stack>
+      </View>
+    </ErrorBoundary>
   );
 }

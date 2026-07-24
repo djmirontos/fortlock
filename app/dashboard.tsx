@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useRef, useCallback } from "react";
+﻿import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import {
   View,
   Text,
@@ -17,6 +17,7 @@ import {
   ScrollView,
   Easing,
   Image,
+  ActivityIndicator,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router, useFocusEffect } from "expo-router";
@@ -96,12 +97,12 @@ export default function Dashboard() {
   const { decryptedCredentials, masterKey, setDecryptedCredentials, logout } = useAuthStore();
   const theme = useTheme();
   const [credentials, setCredentials] = useState<DecryptedCredential[]>([]);
-  const [filtered, setFiltered] = useState<DecryptedCredential[]>([]);
   const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState("all");
   const [sortBy, setSortBy] = useState("recent");
   const [selectedCredential, setSelectedCredential] = useState<DecryptedCredential | null>(null);
   const [showModal, setShowModal] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const modalAnimation = useRef(new Animated.Value(0)).current;
   const addButtonScale = useRef(new Animated.Value(1)).current;
 
@@ -133,31 +134,43 @@ export default function Dashboard() {
   useFocusEffect(
     useCallback(() => {
       if (masterKey) {
-        getDecryptedCredentials(masterKey).then((creds) => {
-          setDecryptedCredentials(creds);
-          setCredentials(creds);
-        });
+        setIsLoading(true);
+        getDecryptedCredentials(masterKey)
+          .then((creds) => {
+            setDecryptedCredentials(creds);
+            setCredentials(creds);
+          })
+          .catch((err) => {
+            console.error("Failed to load credentials:", err);
+            Alert.alert("Error", "Failed to load credentials. Please try logging in again.");
+          })
+          .finally(() => setIsLoading(false));
       }
     }, [masterKey])
   );
-  useEffect(() => { filterCredentials(); }, [credentials, search, activeCategory, sortBy]);
 
-  const filterCredentials = () => {
+  const filtered = useMemo(() => {
     let result = [...credentials];
     if (activeCategory !== "all") {
       result = result.filter((c) => c.category === activeCategory);
     }
     if (search.trim()) {
-      result = searchDecryptedCredentials(result, search);
+      const lower = search.toLowerCase();
+      result = result.filter(
+        (c) =>
+          c.data.serviceName?.toLowerCase().includes(lower) ||
+          c.data.username?.toLowerCase().includes(lower)
+      );
     }
     if (sortBy === "alphabetical") {
-      result.sort((a, b) => a.data.serviceName.localeCompare(b.data.serviceName));
+      result.sort((a, b) =>
+        (a.data.serviceName || "").localeCompare(b.data.serviceName || "")
+      );
     } else {
       result.sort((a, b) => b.updatedAt - a.updatedAt);
     }
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    setFiltered(result);
-  };
+    return result;
+  }, [credentials, activeCategory, search, sortBy]);
 
   const handleAddPress = () => {
     Animated.sequence([
@@ -167,12 +180,15 @@ export default function Dashboard() {
     router.push("/add");
   };
 
-  const handleCopy = (text, label) => {
+  const handleCopy = (text: string, label: string) => {
     Clipboard.setString(text);
     Alert.alert("Copied!", label + " copied to clipboard.");
+    setTimeout(() => {
+      Clipboard.setString("");
+    }, 30000);
   };
 
-  const renderChip = ({ item }) => {
+  const renderChip = useCallback(({ item }) => {
     const isActive = activeCategory === item.key;
     return (
       <TouchableOpacity
@@ -190,9 +206,9 @@ export default function Dashboard() {
         </Text>
       </TouchableOpacity>
     );
-  };
+  }, [theme, activeCategory]);
 
-  const renderCard = ({ item }: { item: DecryptedCredential }) => {
+  const renderCard = useCallback(({ item }: { item: DecryptedCredential }) => {
     const displayValue = item.category === "banking"
       ? item.data.cardNumber ? "**** " + item.data.cardNumber.slice(-4) : ""
       : item.data.username || "";
@@ -244,7 +260,7 @@ export default function Dashboard() {
         </TouchableOpacity>
       </TouchableOpacity>
     );
-  };
+  }, [theme, router]);
 
   const favorites = credentials.filter((c) => c.isFavorite === true);
 
@@ -299,7 +315,15 @@ export default function Dashboard() {
         </View>
       </View>
 
+      {/* Loading State */}
+      {isLoading && (
+        <View style={[styles.loadingContainer, { backgroundColor: theme.background }]}>
+          <ActivityIndicator size="large" color={theme.primary} />
+        </View>
+      )}
+
       {/* FlatList with only chips, favorites, and credentials */}
+      {!isLoading && (
       <FlatList
         style={{ flex: 1 }}
         data={filtered}
@@ -307,6 +331,15 @@ export default function Dashboard() {
         renderItem={renderCard}
         contentContainerStyle={[styles.listContent, { paddingBottom: 86 }]}
         showsVerticalScrollIndicator={false}
+        removeClippedSubviews={true}
+        maxToRenderPerBatch={10}
+        windowSize={10}
+        initialNumToRender={8}
+        getItemLayout={(data, index) => ({
+          length: 73,
+          offset: 73 * index,
+          index,
+        })}
         ListHeaderComponent={
           <>
             {/* Category Chips — full width scroll */}
@@ -387,6 +420,7 @@ export default function Dashboard() {
           </View>
         }
       />
+      )}
 
       {/* Premium Bottom Tab Bar */}
       <View style={[styles.tabBar, { paddingBottom: insets.bottom > 0 ? insets.bottom : 12, backgroundColor: theme.tabBar, borderTopColor: theme.surfaceSecondary }]}>
@@ -599,6 +633,11 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   headerCenter: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  loadingContainer: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",

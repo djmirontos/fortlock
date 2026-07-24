@@ -66,6 +66,9 @@ export default function DetailScreen() {
   const handleCopy = (text: string, label: string) => {
     Clipboard.setString(text);
     showSuccessToast(`${label} copied to clipboard`);
+    setTimeout(() => {
+      Clipboard.setString("");
+    }, 30000);
   };
 
   const handleDelete = () => {
@@ -97,6 +100,33 @@ export default function DetailScreen() {
   const handleEdit = () => {
     router.push({ pathname: "/edit", params: { id: credential!.id } });
   };
+
+  if (!masterKey) {
+    return (
+      <View style={[styles.container, { backgroundColor: theme.background }]}>
+        <StatusBar
+          barStyle={theme === LightTheme ? "dark-content" : "light-content"}
+          backgroundColor={theme.surface}
+          translucent={false}
+        />
+        <View style={styles.sessionExpired}>
+          <Ionicons name="lock-closed" size={48} color={theme.textSecondary} />
+          <Text style={[styles.sessionText, { color: theme.textPrimary }]}>
+            Session Expired
+          </Text>
+          <Text style={[styles.sessionSub, { color: theme.textSecondary }]}>
+            Please login again to continue
+          </Text>
+          <TouchableOpacity
+            style={[styles.loginButton, { backgroundColor: theme.primary }]}
+            onPress={() => router.replace("/")}
+          >
+            <Text style={styles.loginButtonText}>Go to Login</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
 
   if (!credential) {
     return (
@@ -506,5 +536,32 @@ const styles = StyleSheet.create({
   toastSubtitle: {
     fontSize: 12,
     color: "#8E8E93",
+  },
+  sessionExpired: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 24,
+    gap: 16,
+  },
+  sessionText: {
+    fontSize: 20,
+    fontWeight: "700",
+  },
+  sessionSub: {
+    fontSize: 14,
+    textAlign: "center",
+    lineHeight: 20,
+  },
+  loginButton: {
+    paddingHorizontal: 32,
+    paddingVertical: 14,
+    borderRadius: 12,
+    marginTop: 8,
+  },
+  loginButtonText: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "700",
   },
 });
