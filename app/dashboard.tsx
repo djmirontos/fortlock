@@ -265,7 +265,7 @@ export default function Dashboard() {
           flexDirection: 'row',
           alignItems: 'center',
           gap: 14,
-          marginBottom: 2,
+          marginBottom: 0.5,
         }}
         activeOpacity={0.7}
         onPress={() => router.push({ pathname: '/detail', params: { id: item.id } })}
@@ -377,7 +377,7 @@ export default function Dashboard() {
                 shadowOffset: { width: 0, height: 1 },
                 shadowOpacity: 0.04,
                 shadowRadius: 4,
-                marginBottom: 2,
+                marginBottom: 0,
               }}
               onPress={() => router.push({ pathname: '/detail', params: { id: item.id } })}
             >
