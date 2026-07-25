@@ -15,19 +15,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../hooks/useTheme";
 import { useAuthStore } from "../stores/authStore";
 import { deleteCredential, getDecryptedCredentials } from "../services/dbService";
-import { LightTheme } from "../constants/theme";
 import { DecryptedCredential } from "../types";
 import ServiceLogo from "../components/ServiceLogo";
-
-const COLORS = {
-  background: "#F2F2F7",
-  card: "#FFFFFF",
-  accent: "#4F6EF7",
-  textPrimary: "#1C1C1E",
-  textSecondary: "#8E8E93",
-  danger: "#FF3B30",
-  divider: "#F2F2F7",
-};
 
 const getCategoryPillColor = (category: string) => {
   switch (category) {
@@ -46,6 +35,17 @@ const getCategoryPillColor = (category: string) => {
 export default function DetailScreen() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
+
+  const COLORS = {
+    background: theme.background,
+    card: theme.surface,
+    accent: "#4F6EF7",
+    textPrimary: theme.textPrimary,
+    textSecondary: theme.textSecondary,
+    danger: "#FF3B30",
+    divider: theme.background,
+  };
+
   const { id } = useLocalSearchParams<{ id: string }>();
   const { decryptedCredentials, masterKey, setDecryptedCredentials } = useAuthStore();
   const [showPassword, setShowPassword] = useState(false);
@@ -130,7 +130,7 @@ export default function DetailScreen() {
     return (
       <View style={{ flex: 1, backgroundColor: theme.background }}>
         <StatusBar
-          barStyle={theme === LightTheme ? "dark-content" : "light-content"}
+          barStyle={theme.background === '#F2F2F7' ? "dark-content" : "light-content"}
           backgroundColor={theme.surface}
           translucent={false}
         />
@@ -146,7 +146,7 @@ export default function DetailScreen() {
             style={{ paddingHorizontal: 32, paddingVertical: 14, borderRadius: 12, marginTop: 8, backgroundColor: theme.primary }}
             onPress={() => router.replace("/")}
           >
-            <Text style={{ color: "#FFFFFF", fontSize: 16, fontWeight: "700" }}>Go to Login</Text>
+            <Text style={{ color: theme.surface, fontSize: 16, fontWeight: "700" }}>Go to Login</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -157,7 +157,7 @@ export default function DetailScreen() {
     return (
       <View style={{ flex: 1, backgroundColor: theme.background }}>
         <StatusBar
-          barStyle={theme === LightTheme ? "dark-content" : "light-content"}
+          barStyle={theme.background === '#F2F2F7' ? "dark-content" : "light-content"}
           backgroundColor={theme.surface}
           translucent={false}
         />
@@ -494,7 +494,7 @@ export default function DetailScreen() {
             }}
             onPress={() => handleCopy(copyValue || "", copyButtonText)}
           >
-            <Text style={{ color: "#FFFFFF", fontSize: 15, fontWeight: "700" }}>
+            <Text style={{ color: theme.surface, fontSize: 15, fontWeight: "700" }}>
               {copyButtonText}
             </Text>
           </TouchableOpacity>
@@ -527,7 +527,7 @@ export default function DetailScreen() {
             top: 60,
             left: 16,
             right: 16,
-            backgroundColor: "#FFFFFF",
+            backgroundColor: theme.surface,
             borderRadius: 16,
             padding: 16,
             flexDirection: "row",
@@ -546,10 +546,10 @@ export default function DetailScreen() {
         >
           <Ionicons name="checkmark-circle" size={24} color="#4CD964" />
           <View style={{ flex: 1, marginLeft: 12 }}>
-            <Text style={{ fontSize: 14, fontWeight: "700", color: "#1C1C1E", marginBottom: 2 }}>
+            <Text style={{ fontSize: 14, fontWeight: "700", color: theme.textPrimary, marginBottom: 2 }}>
               Copied!
             </Text>
-            <Text style={{ fontSize: 12, color: "#8E8E93" }}>{toastMessage}</Text>
+            <Text style={{ fontSize: 12, color: theme.textSecondary }}>{toastMessage}</Text>
           </View>
         </Animated.View>
       )}

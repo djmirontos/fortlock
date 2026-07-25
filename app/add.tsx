@@ -19,7 +19,6 @@ import { useTheme } from "../hooks/useTheme";
 import { useAuthStore } from "../stores/authStore";
 import { addCredential, getDecryptedCredentials } from "../services/dbService";
 import { CredentialData } from "../types";
-import { LightTheme } from "../constants/theme";
 
 const CATEGORIES = [
   { key: "general", label: "General" },
@@ -27,21 +26,6 @@ const CATEGORIES = [
   { key: "social", label: "Social" },
   { key: "email", label: "Email" },
 ];
-
-const COLORS = {
-  background: "#F2F2F7",
-  card: "#FFFFFF",
-  accent: "#4F6EF7",
-  textPrimary: "#1C1C1E",
-  textSecondary: "#8E8E93",
-  border: "#E2E8F0",
-  danger: "#FF3B30",
-  success: "#34C759",
-  divider: "#F2F2F7",
-  placeholder: "#C7C7CC",
-  disabledBg: "#E5E5EA",
-  disabledText: "#C7C7CC",
-};
 
 const generatePassword = () => {
   const uppercase = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
@@ -84,6 +68,21 @@ export default function AddCredential() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const { masterKey, setDecryptedCredentials } = useAuthStore();
+
+  const COLORS = {
+    background: theme.background,
+    card: theme.surface,
+    accent: "#4F6EF7",
+    textPrimary: theme.textPrimary,
+    textSecondary: theme.textSecondary,
+    border: theme.stroke,
+    danger: "#FF3B30",
+    success: "#34C759",
+    divider: theme.background,
+    placeholder: theme.textSecondary,
+    disabledBg: theme.surfaceSecondary,
+    disabledText: theme.textSecondary,
+  };
   const [category, setCategory] = useState("general");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -243,7 +242,7 @@ export default function AddCredential() {
     return (
       <View style={{ flex: 1, backgroundColor: theme.background }}>
         <StatusBar
-          barStyle={theme === LightTheme ? "dark-content" : "light-content"}
+          barStyle={theme.background === '#F2F2F7' ? "dark-content" : "light-content"}
           backgroundColor={theme.surface}
           translucent={false}
         />
@@ -259,7 +258,7 @@ export default function AddCredential() {
             style={{ paddingHorizontal: 32, paddingVertical: 14, borderRadius: 12, marginTop: 8, backgroundColor: theme.primary }}
             onPress={() => router.replace("/")}
           >
-            <Text style={{ color: "#FFFFFF", fontSize: 16, fontWeight: "700" }}>Go to Login</Text>
+            <Text style={{ color: theme.surface, fontSize: 16, fontWeight: "700" }}>Go to Login</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -317,7 +316,7 @@ export default function AddCredential() {
                   style={{
                     fontSize: 13,
                     fontWeight: active ? "600" : "500",
-                    color: active ? "#FFFFFF" : COLORS.textSecondary,
+                    color: active ? theme.surface : COLORS.textSecondary,
                   }}
                 >
                   {cat.label}
@@ -582,13 +581,13 @@ export default function AddCredential() {
             }}
           >
             {loading ? (
-              <ActivityIndicator color="#FFFFFF" />
+              <ActivityIndicator color={theme.surface} />
             ) : (
               <Text
                 style={{
                   fontSize: 16,
                   fontWeight: "700",
-                  color: formValid ? "#FFFFFF" : COLORS.disabledText,
+                  color: formValid ? theme.surface : COLORS.disabledText,
                 }}
               >
                 Save Credential
@@ -606,7 +605,7 @@ export default function AddCredential() {
             top: 60,
             left: 16,
             right: 16,
-            backgroundColor: "#FFFFFF",
+            backgroundColor: theme.surface,
             borderRadius: 16,
             padding: 16,
             flexDirection: "row",
@@ -626,10 +625,10 @@ export default function AddCredential() {
         >
           <Ionicons name="checkmark-circle" size={24} color="#4CD964" />
           <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 14, fontWeight: "700", color: "#1C1C1E", marginBottom: 2 }}>
+            <Text style={{ fontSize: 14, fontWeight: "700", color: theme.textPrimary, marginBottom: 2 }}>
               Saved Successfully
             </Text>
-            <Text style={{ fontSize: 12, color: "#8E8E93" }}>
+            <Text style={{ fontSize: 12, color: theme.textSecondary }}>
               Credential has been added to your vault
             </Text>
           </View>

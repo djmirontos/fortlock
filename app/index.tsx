@@ -152,9 +152,9 @@ export default function LoginScreen() {
           disabled={isLoading}
         >
           {isLoading ? (
-            <ActivityIndicator color="#FFFFFF" />
+            <ActivityIndicator color={theme.surface} />
           ) : (
-            <Text style={styles.unlockText}>Unlock</Text>
+            <Text style={[styles.unlockText, { color: theme.surface }]}>Unlock</Text>
           )}
         </TouchableOpacity>
 
@@ -225,7 +225,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   unlockText: {
-    color: '#FFFFFF',
     fontSize: FontSize.lg,
     fontWeight: 'bold',
   },
