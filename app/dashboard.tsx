@@ -86,6 +86,7 @@ export default function Dashboard() {
   const [selectedCredential, setSelectedCredential] = useState<DecryptedCredential | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
 
   // Theme-aware colors
   const isDark = themeMode === 'dark' || (themeMode === 'system' && colorScheme === 'dark');
@@ -608,15 +609,44 @@ export default function Dashboard() {
         </View>
 
         {/* Search Bar */}
-        <View style={styles.searchContainer}>
-          <View style={styles.searchInput}>
+        <View
+          style={{
+            paddingHorizontal: 20,
+            paddingVertical: 12,
+            backgroundColor: theme.surface,
+          }}
+        >
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              backgroundColor: isSearchFocused ? theme.surface : theme.surfaceSecondary,
+              borderRadius: 14,
+              height: 46,
+              paddingHorizontal: 14,
+              gap: 10,
+              borderWidth: 1,
+              borderColor: isSearchFocused ? '#4F6FFF' : theme.stroke,
+              elevation: isSearchFocused ? 4 : 0,
+              shadowColor: isSearchFocused ? '#4F6FFF' : 'transparent',
+              shadowOffset: { width: 0, height: 0 },
+              shadowOpacity: isSearchFocused ? 0.15 : 0,
+              shadowRadius: isSearchFocused ? 8 : 0,
+            }}
+          >
             <Ionicons name="search-outline" size={18} color={colors.textMuted} />
             <TextInput
-              style={styles.searchField}
+              style={{
+                flex: 1,
+                fontSize: 15,
+                color: colors.textPrimary,
+              }}
               placeholder="Search your vault..."
               placeholderTextColor={colors.textMuted}
               value={search}
               onChangeText={setSearch}
+              onFocus={() => setIsSearchFocused(true)}
+              onBlur={() => setIsSearchFocused(false)}
               autoCapitalize="none"
               autoCorrect={false}
             />
@@ -952,37 +982,117 @@ export default function Dashboard() {
               },
             ]}
           >
-            <View style={styles.dragHandle} />
+            {/* Drag Handle */}
+            <View
+              style={{
+                width: 36,
+                height: 4,
+                backgroundColor: theme.stroke,
+                borderRadius: 2,
+                alignSelf: 'center',
+                marginBottom: 16,
+                marginTop: 8,
+              }}
+            />
 
-            <View style={styles.modalHeader}>
+            {/* Service Info Header */}
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 12,
+                paddingBottom: 16,
+                borderBottomWidth: 1,
+                borderBottomColor: theme.surfaceSecondary,
+                marginBottom: 8,
+              }}
+            >
               <ServiceLogo serviceName={selectedCredential.data.serviceName} size={44} />
-              <View style={{ flex: 1, marginLeft: 14 }}>
-                <Text style={styles.modalServiceName}>
+              <View style={{ flex: 1 }}>
+                <Text
+                  style={{
+                    fontSize: 16,
+                    fontWeight: 'bold',
+                    color: theme.textPrimary,
+                  }}
+                >
                   {selectedCredential.data.serviceName}
                 </Text>
-                <Text style={styles.modalUsername}>
+                <Text
+                  style={{
+                    fontSize: 13,
+                    color: theme.textSecondary,
+                    marginTop: 2,
+                  }}
+                >
                   {selectedCredential.data.username}
                 </Text>
-                <Text style={styles.modalDate}>Added {formatDate(selectedCredential.createdAt)}</Text>
+                <Text
+                  style={{
+                    fontSize: 11,
+                    color: theme.textSecondary,
+                    marginTop: 2,
+                  }}
+                >
+                  Added {formatDate(selectedCredential.createdAt)}
+                </Text>
               </View>
             </View>
 
+            {/* Copy Option */}
             <TouchableOpacity
-              style={styles.modalOption}
+              style={{
+                height: 56,
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 14,
+              }}
               onPress={() => {
                 handleCopy(selectedCredential.data.password, 'Password');
                 closeModal();
               }}
             >
-              <View style={styles.optionIconContainer}>
-                <Ionicons name="copy-outline" size={18} color={colors.primary} />
+              <View
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 10,
+                  backgroundColor: '#EFF6FF',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Ionicons name="copy-outline" size={18} color="#4F6FFF" />
               </View>
-              <Text style={styles.optionText}>Copy Password</Text>
-              <Ionicons name="chevron-forward" size={18} color={colors.border} />
+              <Text
+                style={{
+                  flex: 1,
+                  fontSize: 15,
+                  color: theme.textPrimary,
+                }}
+              >
+                Copy Password
+              </Text>
+              <Ionicons name="chevron-forward" size={16} color={theme.stroke} />
             </TouchableOpacity>
 
+            {/* Divider */}
+            <View
+              style={{
+                height: 1,
+                backgroundColor: theme.surfaceSecondary,
+                marginLeft: 50,
+              }}
+            />
+
+            {/* Favorites Option */}
             <TouchableOpacity
-              style={styles.modalOption}
+              style={{
+                height: 56,
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 14,
+              }}
               onPress={async () => {
                 await toggleFavorite(selectedCredential.id);
                 if (masterKey) {
@@ -993,27 +1103,51 @@ export default function Dashboard() {
               }}
             >
               <View
-                style={[
-                  styles.optionIconContainer,
-                  {
-                    backgroundColor: selectedCredential.isFavorite ? '#FFFBEB' : colors.background,
-                  },
-                ]}
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 10,
+                  backgroundColor: selectedCredential.isFavorite ? '#FFFBEB' : theme.surfaceSecondary,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
               >
                 <Ionicons
                   name={selectedCredential.isFavorite ? 'star' : 'star-outline'}
                   size={18}
-                  color={selectedCredential.isFavorite ? colors.warning : colors.textMuted}
+                  color={selectedCredential.isFavorite ? '#F59E0B' : theme.textSecondary}
                 />
               </View>
-              <Text style={styles.optionText}>
+              <Text
+                style={{
+                  flex: 1,
+                  fontSize: 15,
+                  color: theme.textPrimary,
+                }}
+              >
                 {selectedCredential.isFavorite ? 'Remove from Favorites' : 'Add to Favorites'}
               </Text>
-              <Ionicons name="chevron-forward" size={18} color={colors.border} />
+              <Ionicons name="chevron-forward" size={16} color={theme.stroke} />
             </TouchableOpacity>
 
+            {/* Divider */}
+            <View
+              style={{
+                height: 1,
+                backgroundColor: theme.surfaceSecondary,
+                marginLeft: 50,
+              }}
+            />
+
+            {/* Delete Option */}
             <TouchableOpacity
-              style={styles.modalOption}
+              style={{
+                height: 56,
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 14,
+                paddingBottom: insets.bottom + 16,
+              }}
               onPress={() => {
                 Alert.alert(
                   'Delete Credential',
@@ -1037,15 +1171,27 @@ export default function Dashboard() {
               }}
             >
               <View
-                style={[
-                  styles.optionIconContainer,
-                  { backgroundColor: '#FEF2F2' },
-                ]}
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 10,
+                  backgroundColor: '#FEF2F2',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
               >
-                <Ionicons name="trash-outline" size={18} color={colors.danger} />
+                <Ionicons name="trash-outline" size={18} color="#EF4444" />
               </View>
-              <Text style={[styles.optionText, { color: colors.danger }]}>Delete</Text>
-              <Ionicons name="chevron-forward" size={18} color={colors.border} />
+              <Text
+                style={{
+                  flex: 1,
+                  fontSize: 15,
+                  color: '#EF4444',
+                }}
+              >
+                Delete
+              </Text>
+              <Ionicons name="chevron-forward" size={16} color={theme.stroke} />
             </TouchableOpacity>
           </Animated.View>
         </Modal>
