@@ -334,7 +334,6 @@ export default function Dashboard() {
         keyExtractor={(item) => item.key}
         contentContainerStyle={{ paddingHorizontal: 20, paddingVertical: 10, gap: 8 }}
         renderItem={renderChip}
-        scrollEnabled={false}
       />
 
       {/* Favorites Section */}
