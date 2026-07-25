@@ -394,8 +394,8 @@ export default function Settings() {
           onPress={() => router.replace("/dashboard")}
           activeOpacity={0.7}
         >
-          <Ionicons name="home-outline" size={26} color={theme.textSecondary} />
-          <Text style={[styles.tabLabel, { color: theme.textSecondary }]}>Home</Text>
+          <Ionicons name="shield-outline" size={26} color={theme.textSecondary} />
+          <Text style={[styles.tabLabel, { color: theme.textSecondary }]}>Vault</Text>
         </TouchableOpacity>
 
         <View style={styles.addButtonWrapper}>
