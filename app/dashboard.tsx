@@ -87,6 +87,7 @@ export default function Dashboard() {
   const [showModal, setShowModal] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const [showFavoritesModal, setShowFavoritesModal] = useState(false);
 
   // Theme-aware colors
   const isDark = themeMode === 'dark' || (themeMode === 'system' && colorScheme === 'dark');
@@ -262,6 +263,21 @@ export default function Dashboard() {
     }
   };
 
+  const getCategoryAccentColor = (category: string): string => {
+    switch (category) {
+      case 'banking':
+        return '#3B82F6';
+      case 'social':
+        return '#16A34A';
+      case 'email':
+        return '#EA580C';
+      case 'general':
+        return '#7C3AED';
+      default:
+        return '#4F6EF7';
+    }
+  };
+
   const getCategoryShadowColor = (category: string): string => {
     switch (category) {
       case 'banking':
@@ -322,20 +338,13 @@ export default function Dashboard() {
       <TouchableOpacity
         style={{
           backgroundColor: theme.surface,
-          marginHorizontal: 20,
-          borderRadius: 16,
-          padding: 16,
-          marginBottom: 8,
-          elevation: 1,
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: 1 },
-          shadowOpacity: 0.04,
-          shadowRadius: 4,
+          paddingHorizontal: 16,
+          paddingVertical: 14,
           flexDirection: 'row',
           alignItems: 'center',
           gap: 14,
         }}
-        activeOpacity={0.7}
+        activeOpacity={0.6}
         onPress={() => router.push({ pathname: '/detail', params: { id: item.id } })}
       >
         <ServiceLogo serviceName={item.data.serviceName} size={44} />
@@ -412,8 +421,8 @@ export default function Dashboard() {
               justifyContent: 'space-between',
               alignItems: 'center',
               paddingHorizontal: 20,
-              marginBottom: 10,
-              marginTop: 16,
+              paddingTop: 20,
+              paddingBottom: 10,
             }}
           >
             <Text
@@ -425,80 +434,250 @@ export default function Dashboard() {
             >
               Favorites
             </Text>
-            {favorites.length > 5 && (
-              <Text
-                style={{
-                  fontSize: 14,
-                  color: '#4F6EF7',
-                }}
-              >
-                See all ({favorites.length})
-              </Text>
+            {favorites.length > 3 && (
+              <TouchableOpacity onPress={() => setShowFavoritesModal(true)}>
+                <Text
+                  style={{
+                    fontSize: 14,
+                    color: '#4F6EF7',
+                  }}
+                >
+                  View all
+                </Text>
+              </TouchableOpacity>
             )}
           </View>
           <View
             style={{
-              paddingHorizontal: 20,
-              gap: 6,
+              marginHorizontal: 20,
+              borderRadius: 16,
+              overflow: 'hidden',
+              backgroundColor: theme.surface,
+              elevation: 2,
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 1 },
+              shadowOpacity: 0.06,
+              shadowRadius: 8,
             }}
           >
-            {favorites.slice(0, 5).map((item) => (
-              <TouchableOpacity
-                key={item.id}
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  backgroundColor: getCardGradient(item.category),
-                  borderRadius: 14,
-                  padding: 12,
-                  gap: 12,
-                  borderLeftWidth: 3,
-                  borderLeftColor: getCategoryColor(item.category).text,
-                  elevation: 2,
-                  shadowColor: getCategoryShadowColor(item.category),
-                  shadowOffset: { width: 0, height: 1 },
-                  shadowOpacity: 0.08,
-                  shadowRadius: 4,
-                }}
-                activeOpacity={0.6}
-                onPress={() => router.push({ pathname: '/detail', params: { id: item.id } })}
-              >
-                <ServiceLogo serviceName={item.data.serviceName} size={32} />
-                <View style={{ flex: 1, gap: 2 }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            {favorites.slice(0, 3).map((item, index) => (
+              <View key={item.id}>
+                <TouchableOpacity
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    backgroundColor: getCardGradient(item.category),
+                    paddingHorizontal: 20,
+                    paddingVertical: 14,
+                    gap: 12,
+                    borderLeftWidth: 3,
+                    borderLeftColor: getCategoryAccentColor(item.category),
+                  }}
+                  activeOpacity={0.6}
+                  onPress={() =>
+                    router.push({ pathname: '/detail', params: { id: item.id } })
+                  }
+                >
+                  <ServiceLogo serviceName={item.data.serviceName} size={36} />
+                  <View style={{ flex: 1 }}>
                     <Text
                       style={{
-                        fontSize: 14,
+                        fontSize: 15,
                         fontWeight: '600',
                         color: theme.textPrimary,
-                        flex: 1,
                       }}
                       numberOfLines={1}
                     >
                       {item.data.serviceName}
                     </Text>
-                    <Ionicons name="star" size={14} color="#F59E0B" />
+                    <Text
+                      style={{
+                        fontSize: 13,
+                        color: theme.textSecondary,
+                        marginTop: 2,
+                      }}
+                      numberOfLines={1}
+                    >
+                      {item.data.username || item.data.cardHolder || ''}
+                    </Text>
                   </View>
-                  <Text
+                  <Ionicons name="star" size={14} color="#F59E0B" />
+                  <Ionicons
+                    name="chevron-forward"
+                    size={14}
+                    color={theme.stroke}
+                  />
+                </TouchableOpacity>
+                {index < favorites.slice(0, 3).length - 1 && (
+                  <View
                     style={{
-                      fontSize: 12,
-                      color: theme.textSecondary,
+                      height: 1,
+                      backgroundColor: theme.stroke,
+                      marginLeft: 72,
                     }}
-                    numberOfLines={1}
-                  >
-                    {item.data.username || item.data.cardHolder || ''}
-                  </Text>
-                </View>
-                <Ionicons name="chevron-forward" size={14} color={theme.stroke} />
-              </TouchableOpacity>
+                  />
+                )}
+              </View>
             ))}
           </View>
         </View>
       )}
 
+      {/* Favorites Modal */}
+      <Modal
+        visible={showFavoritesModal}
+        transparent
+        animationType="slide"
+      >
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: 'rgba(0,0,0,0.4)',
+            justifyContent: 'flex-end',
+          }}
+        >
+          <TouchableOpacity
+            style={{ flex: 1 }}
+            onPress={() => setShowFavoritesModal(false)}
+          />
+          <View
+            style={{
+              backgroundColor: theme.surface,
+              borderTopLeftRadius: 24,
+              borderTopRightRadius: 24,
+              maxHeight: '80%',
+              paddingBottom: insets.bottom + 16,
+            }}
+          >
+            {/* Drag Handle */}
+            <View
+              style={{
+                width: 36,
+                height: 4,
+                backgroundColor: theme.stroke,
+                borderRadius: 2,
+                alignSelf: 'center',
+                marginTop: 8,
+                marginBottom: 16,
+              }}
+            />
+
+            {/* Header */}
+            <View
+              style={{
+                paddingHorizontal: 20,
+                marginBottom: 12,
+                flexDirection: 'row',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+              }}
+            >
+              <View>
+                <Text
+                  style={{
+                    fontSize: 18,
+                    fontWeight: '700',
+                    color: theme.textPrimary,
+                  }}
+                >
+                  Favorites
+                </Text>
+                <Text
+                  style={{
+                    fontSize: 13,
+                    color: theme.textSecondary,
+                    marginTop: 2,
+                  }}
+                >
+                  {favorites.length} item{favorites.length !== 1 ? 's' : ''}
+                </Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => setShowFavoritesModal(false)}
+              >
+                <Ionicons name="close" size={24} color={theme.textSecondary} />
+              </TouchableOpacity>
+            </View>
+
+            {/* Favorites List */}
+            <FlatList
+              data={favorites}
+              keyExtractor={(item) => item.id}
+              renderItem={({ item, index }) => (
+                <View>
+                  <TouchableOpacity
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      backgroundColor: getCardGradient(item.category),
+                      paddingHorizontal: 20,
+                      paddingVertical: 14,
+                      gap: 12,
+                      borderLeftWidth: 3,
+                      borderLeftColor: getCategoryAccentColor(item.category),
+                    }}
+                    onPress={() => {
+                      setShowFavoritesModal(false);
+                      router.push({
+                        pathname: '/detail',
+                        params: { id: item.id },
+                      });
+                    }}
+                  >
+                    <ServiceLogo
+                      serviceName={item.data.serviceName}
+                      size={36}
+                    />
+                    <View style={{ flex: 1 }}>
+                      <Text
+                        style={{
+                          fontSize: 15,
+                          fontWeight: '600',
+                          color: theme.textPrimary,
+                        }}
+                        numberOfLines={1}
+                      >
+                        {item.data.serviceName}
+                      </Text>
+                      <Text
+                        style={{
+                          fontSize: 13,
+                          color: theme.textSecondary,
+                          marginTop: 2,
+                        }}
+                        numberOfLines={1}
+                      >
+                        {item.data.username || item.data.cardHolder || ''}
+                      </Text>
+                    </View>
+                    <Ionicons name="star" size={14} color="#F59E0B" />
+                    <Ionicons
+                      name="chevron-forward"
+                      size={14}
+                      color={theme.stroke}
+                    />
+                  </TouchableOpacity>
+                  {index < favorites.length - 1 && (
+                    <View
+                      style={{
+                        height: 1,
+                        backgroundColor: theme.stroke,
+                        marginLeft: 72,
+                      }}
+                    />
+                  )}
+                </View>
+              )}
+              scrollEnabled
+              bounces={false}
+            />
+          </View>
+        </View>
+      </Modal>
+
       {/* All Credentials Header */}
       <View style={styles.allItemsHeader}>
-        <Text style={styles.sectionTitle}>All Items</Text>
+        <Text style={styles.sectionTitle}>All Credentials</Text>
         <TouchableOpacity
           style={styles.sortButton}
           onPress={() =>
@@ -709,23 +888,27 @@ export default function Dashboard() {
         >
           <View
             style={{
+              backgroundColor: theme.surface,
+              borderRadius: 16,
+              borderWidth: 1.5,
+              borderColor: isSearchFocused ? '#4F6FFF' : theme.stroke,
+              height: 50,
+              paddingHorizontal: 16,
               flexDirection: 'row',
               alignItems: 'center',
-              backgroundColor: isSearchFocused ? theme.surface : theme.surfaceSecondary,
-              borderRadius: 18,
-              height: 52,
-              paddingHorizontal: 14,
-              gap: 8,
-              borderWidth: 1,
-              borderColor: isSearchFocused ? '#4F6FFF' : theme.stroke,
-              elevation: isSearchFocused ? 6 : 2,
+              gap: 10,
+              elevation: 2,
               shadowColor: isSearchFocused ? '#4F6FFF' : '#000',
-              shadowOffset: { width: 0, height: 1 },
+              shadowOffset: { width: 0, height: 2 },
               shadowOpacity: isSearchFocused ? 0.15 : 0.06,
               shadowRadius: isSearchFocused ? 8 : 4,
             }}
           >
-            <Ionicons name="search-outline" size={18} color={colors.textMuted} />
+            <Ionicons
+              name="search-outline"
+              size={18}
+              color={isSearchFocused ? '#4F6FFF' : theme.textSecondary}
+            />
             <TextInput
               style={{
                 flex: 1,
@@ -741,12 +924,10 @@ export default function Dashboard() {
               autoCapitalize="none"
               autoCorrect={false}
             />
-            {search ? (
+            {search && (
               <TouchableOpacity onPress={() => setSearch('')}>
                 <Ionicons name="close-circle" size={18} color={colors.textMuted} />
               </TouchableOpacity>
-            ) : (
-              <Ionicons name="options-outline" size={16} color={colors.textSecondary} />
             )}
           </View>
         </View>
@@ -874,28 +1055,23 @@ export default function Dashboard() {
       <View
         style={{
           backgroundColor: theme.surface,
-          paddingTop: insets.top + 8,
-          paddingBottom: 10,
+          paddingTop: insets.top + 12,
+          paddingBottom: 14,
           paddingHorizontal: 20,
-          paddingRight: 56,
-          borderBottomWidth: 0,
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 12,
         }}
       >
-        <View
+        <Image
+          source={require('../assets/logo.png')}
           style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 6,
+            width: 44,
+            height: 44,
+            borderRadius: 12,
           }}
-        >
-          <Image
-            source={require('../assets/logo.png')}
-            style={{
-              width: 24,
-              height: 24,
-              borderRadius: 6,
-            }}
-          />
+        />
+        <View style={{ flex: 1 }}>
           <Text
             style={{
               fontSize: 18,
@@ -905,26 +1081,25 @@ export default function Dashboard() {
           >
             FortLock
           </Text>
+          <Text
+            style={{
+              marginTop: 1,
+              fontSize: 12,
+              color: theme.textSecondary,
+            }}
+          >
+            Your secure password vault
+          </Text>
+          <Text
+            style={{
+              marginTop: 1,
+              fontSize: 12,
+              color: theme.textSecondary,
+            }}
+          >
+            {credentials.length} item{credentials.length !== 1 ? 's' : ''} secured
+          </Text>
         </View>
-        <Text
-          style={{
-            marginTop: 3,
-            fontSize: 13,
-            color: theme.textSecondary,
-            fontWeight: '500',
-          }}
-        >
-          {credentials.length} item{credentials.length !== 1 ? 's' : ''} secured
-        </Text>
-        <Text
-          style={{
-            marginTop: 1,
-            fontSize: 11,
-            color: theme.textSecondary,
-          }}
-        >
-          Last synced just now
-        </Text>
         <TouchableOpacity
           onPress={() => {
             logout();
@@ -933,10 +1108,9 @@ export default function Dashboard() {
           style={{
             position: 'absolute',
             right: 20,
-            top: insets.top + 8,
-            width: 32,
-            height: 32,
-            borderRadius: 16,
+            width: 34,
+            height: 34,
+            borderRadius: 17,
             backgroundColor: theme.surfaceSecondary,
             alignItems: 'center',
             justifyContent: 'center',
@@ -944,7 +1118,7 @@ export default function Dashboard() {
         >
           <Ionicons
             name="lock-closed-outline"
-            size={14}
+            size={16}
             color={theme.textSecondary}
           />
         </TouchableOpacity>
@@ -978,10 +1152,40 @@ export default function Dashboard() {
         style={{ flex: 1 }}
         data={filtered}
         keyExtractor={(item) => item.id}
-        renderItem={renderCard}
+        renderItem={({ item, index }) => (
+          <View>
+            {renderCard({ item })}
+            {index < filtered.length - 1 && (
+              <View
+                style={{
+                  height: 1,
+                  backgroundColor: theme.stroke,
+                  marginLeft: 72,
+                }}
+              />
+            )}
+          </View>
+        )}
         ListHeaderComponent={renderListHeader}
+        ListFooterComponent={
+          filtered.length > 0 ? (
+            <View style={{ height: 1 }} />
+          ) : null
+        }
         contentContainerStyle={[
           styles.listContent,
+          filtered.length > 0 && {
+            marginHorizontal: 20,
+            borderRadius: 16,
+            overflow: 'hidden',
+            backgroundColor: theme.surface,
+            elevation: 2,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 1 },
+            shadowOpacity: 0.06,
+            shadowRadius: 8,
+            marginBottom: 20,
+          },
           { paddingBottom: 90 + insets.bottom },
         ]}
         showsVerticalScrollIndicator={false}
