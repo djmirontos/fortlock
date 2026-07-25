@@ -22,7 +22,6 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useAuthStore } from '../stores/authStore';
 import { useTheme } from '../hooks/useTheme';
 import { getDecryptedCredentials, toggleFavorite, deleteCredential } from '../services/dbService';
@@ -248,18 +247,33 @@ export default function Dashboard() {
     router.push('/add');
   };
 
-  const getCardGradient = (category: string): [string, string] => {
+  const getCardGradient = (category: string): string => {
     switch (category) {
       case 'banking':
-        return ['#EFF6FF', '#DBEAFE'];
+        return '#EFF6FF';
       case 'social':
-        return ['#F0FDF4', '#DCFCE7'];
+        return '#F0FDF4';
       case 'email':
-        return ['#FFF7ED', '#FFEDD5'];
+        return '#FFF7ED';
       case 'general':
-        return ['#F5F3FF', '#EDE9FE'];
+        return '#F5F3FF';
       default:
-        return ['#F8FAFC', '#F1F5F9'];
+        return '#F8FAFC';
+    }
+  };
+
+  const getCategoryShadowColor = (category: string): string => {
+    switch (category) {
+      case 'banking':
+        return '#3B82F6';
+      case 'social':
+        return '#16A34A';
+      case 'email':
+        return '#EA580C';
+      case 'general':
+        return '#7C3AED';
+      default:
+        return '#4F6EF7';
     }
   };
 
@@ -434,13 +448,18 @@ export default function Dashboard() {
               activeOpacity={0.7}
               onPress={() => router.push({ pathname: '/detail', params: { id: item.id } })}
             >
-              <LinearGradient
-                colors={getCardGradient(item.category)}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
+              <View
                 style={{
+                  backgroundColor: getCardGradient(item.category),
                   padding: 16,
                   borderRadius: 20,
+                  borderLeftWidth: 3,
+                  borderLeftColor: getCategoryColor(item.category).text,
+                  elevation: 4,
+                  shadowColor: getCategoryShadowColor(item.category),
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.12,
+                  shadowRadius: 8,
                 }}
               >
                 {/* Row 1: Logo + Name + Category */}
@@ -535,7 +554,7 @@ export default function Dashboard() {
                     {formatDate(item.createdAt)}
                   </Text>
                 </View>
-              </LinearGradient>
+              </View>
             </TouchableOpacity>
           ))}
         </View>
