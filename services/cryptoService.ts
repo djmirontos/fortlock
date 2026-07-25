@@ -1,4 +1,5 @@
-import * as QuickCrypto from 'react-native-quick-crypto';
+const QuickCrypto = require('react-native-quick-crypto');
+const { Buffer } = require('buffer');
 import * as SecureStore from 'expo-secure-store';
 import * as ExpoRandom from 'expo-crypto';
 import AsyncStorage from '@react-native-async-storage/async-storage';
