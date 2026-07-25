@@ -388,34 +388,104 @@ export default function Settings() {
       </ScrollView>
 
       {/* Bottom Tab Bar */}
-      <View style={[styles.tabBar, { paddingBottom: insets.bottom > 0 ? insets.bottom : 12, backgroundColor: theme.tabBar, borderTopColor: theme.surfaceSecondary }]}>
+      <View
+        style={{
+          position: 'absolute',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          backgroundColor: theme.surface,
+          borderTopWidth: 0.5,
+          borderTopColor: theme.stroke,
+          flexDirection: 'row',
+          alignItems: 'center',
+          height: 64 + insets.bottom,
+          paddingBottom: insets.bottom,
+          elevation: 20,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: -2 },
+          shadowOpacity: 0.06,
+          shadowRadius: 8,
+        }}
+      >
+        {/* Vault Tab (Left - Inactive) */}
         <TouchableOpacity
-          style={styles.tabItem}
+          style={{
+            flex: 1,
+            alignItems: 'center',
+            justifyContent: 'center',
+            paddingTop: 8,
+          }}
           onPress={() => router.replace("/dashboard")}
           activeOpacity={0.7}
         >
-          <Ionicons name="shield-outline" size={26} color={theme.textSecondary} />
-          <Text style={[styles.tabLabel, { color: theme.textSecondary }]}>Vault</Text>
+          <Ionicons name="shield-outline" size={22} color={theme.textSecondary} />
+          <Text
+            style={{
+              fontSize: 11,
+              fontWeight: '500',
+              color: theme.textSecondary,
+              marginTop: 3,
+            }}
+          >
+            Vault
+          </Text>
         </TouchableOpacity>
 
-        <View style={styles.addButtonWrapper}>
-          <Animated.View style={{ transform: [{ scale: addButtonScale }] }}>
-            <TouchableOpacity
-              style={[styles.addButton, { backgroundColor: theme.primary, borderColor: theme.background, shadowColor: theme.primary }]}
-              onPress={handleAddPress}
-              activeOpacity={0.8}
-            >
-              <Ionicons name="add" size={32} color={theme.textPrimary} />
-            </TouchableOpacity>
-          </Animated.View>
-        </View>
+        {/* FAB (Center) */}
+        <Animated.View
+          style={{
+            width: 64,
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginTop: -20,
+            transform: [{ scale: addButtonScale }],
+          }}
+        >
+          <TouchableOpacity
+            style={{
+              width: 56,
+              height: 56,
+              borderRadius: 28,
+              backgroundColor: '#4F6EF7',
+              alignItems: 'center',
+              justifyContent: 'center',
+              elevation: 12,
+              shadowColor: '#4F6EF7',
+              shadowOffset: { width: 0, height: 6 },
+              shadowOpacity: 0.4,
+              shadowRadius: 16,
+              borderWidth: 3,
+              borderColor: '#FFFFFF',
+            }}
+            onPress={handleAddPress}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="add" size={28} color="#FFFFFF" />
+          </TouchableOpacity>
+        </Animated.View>
 
+        {/* Settings Tab (Right - Active) */}
         <TouchableOpacity
-          style={styles.tabItem}
+          style={{
+            flex: 1,
+            alignItems: 'center',
+            justifyContent: 'center',
+            paddingTop: 8,
+          }}
           activeOpacity={0.7}
         >
-          <Ionicons name="settings-sharp" size={26} color={theme.primary} />
-          <Text style={[styles.tabLabel, { color: theme.primary }]}>Settings</Text>
+          <Ionicons name="settings-sharp" size={22} color="#4F6EF7" />
+          <Text
+            style={{
+              fontSize: 11,
+              fontWeight: '600',
+              color: '#4F6EF7',
+              marginTop: 3,
+            }}
+          >
+            Settings
+          </Text>
         </TouchableOpacity>
       </View>
 

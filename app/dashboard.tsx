@@ -289,7 +289,21 @@ export default function Dashboard() {
 
     return (
       <TouchableOpacity
-        style={styles.credentialCard}
+        style={{
+          backgroundColor: theme.surface,
+          marginHorizontal: 20,
+          borderRadius: 16,
+          padding: 16,
+          marginBottom: 8,
+          elevation: 1,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 1 },
+          shadowOpacity: 0.04,
+          shadowRadius: 4,
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 14,
+        }}
         activeOpacity={0.7}
         onPress={() => router.push({ pathname: '/detail', params: { id: item.id } })}
       >
@@ -461,24 +475,75 @@ export default function Dashboard() {
         </ScrollView>
 
         {/* Tab Bar */}
-        <View style={[styles.tabBar, { paddingBottom: insets.bottom + 8 }]}>
-          <TouchableOpacity style={styles.tabItem} activeOpacity={0.7}>
-            <View style={styles.activeIndicator}>
-              <Ionicons name="shield-checkmark" size={20} color={colors.primary} />
-            </View>
-            <Text style={styles.activeTabLabel}>Vault</Text>
+        <View
+          style={{
+            position: 'absolute',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            backgroundColor: theme.surface,
+            borderTopWidth: 0.5,
+            borderTopColor: theme.stroke,
+            flexDirection: 'row',
+            alignItems: 'center',
+            height: 64 + insets.bottom,
+            paddingBottom: insets.bottom,
+            elevation: 20,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: -2 },
+            shadowOpacity: 0.06,
+            shadowRadius: 8,
+          }}
+        >
+          {/* Vault Tab (Left) */}
+          <TouchableOpacity
+            style={{
+              flex: 1,
+              alignItems: 'center',
+              justifyContent: 'center',
+              paddingTop: 8,
+            }}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="shield-checkmark" size={22} color="#4F6EF7" />
+            <Text
+              style={{
+                fontSize: 11,
+                fontWeight: '600',
+                color: '#4F6EF7',
+                marginTop: 3,
+              }}
+            >
+              Vault
+            </Text>
           </TouchableOpacity>
 
+          {/* FAB (Center) */}
           <Animated.View
-            style={[
-              styles.fabWrapper,
-              {
-                transform: [{ scale: addButtonScale }],
-              },
-            ]}
+            style={{
+              width: 64,
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginTop: -20,
+              transform: [{ scale: addButtonScale }],
+            }}
           >
             <TouchableOpacity
-              style={styles.fab}
+              style={{
+                width: 56,
+                height: 56,
+                borderRadius: 28,
+                backgroundColor: '#4F6EF7',
+                alignItems: 'center',
+                justifyContent: 'center',
+                elevation: 12,
+                shadowColor: '#4F6EF7',
+                shadowOffset: { width: 0, height: 6 },
+                shadowOpacity: 0.4,
+                shadowRadius: 16,
+                borderWidth: 3,
+                borderColor: '#FFFFFF',
+              }}
               onPress={handleAddPress}
               activeOpacity={0.85}
             >
@@ -486,14 +551,28 @@ export default function Dashboard() {
             </TouchableOpacity>
           </Animated.View>
 
+          {/* Settings Tab (Right) */}
           <TouchableOpacity
-            style={styles.tabItem}
+            style={{
+              flex: 1,
+              alignItems: 'center',
+              justifyContent: 'center',
+              paddingTop: 8,
+            }}
             onPress={() => router.push('/settings')}
             activeOpacity={0.7}
           >
-            <View style={styles.inactiveIndicator} />
-            <Ionicons name="settings-outline" size={20} color={colors.textMuted} />
-            <Text style={styles.inactiveTabLabel}>Settings</Text>
+            <Ionicons name="settings-outline" size={22} color={theme.textSecondary} />
+            <Text
+              style={{
+                fontSize: 11,
+                fontWeight: '500',
+                color: theme.textSecondary,
+                marginTop: 3,
+              }}
+            >
+              Settings
+            </Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -562,24 +641,75 @@ export default function Dashboard() {
         </ScrollView>
 
         {/* Tab Bar */}
-        <View style={[styles.tabBar, { paddingBottom: insets.bottom + 8 }]}>
-          <TouchableOpacity style={styles.tabItem} activeOpacity={0.7}>
-            <View style={styles.activeIndicator}>
-              <Ionicons name="shield-checkmark" size={20} color={colors.primary} />
-            </View>
-            <Text style={styles.activeTabLabel}>Vault</Text>
+        <View
+          style={{
+            position: 'absolute',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            backgroundColor: theme.surface,
+            borderTopWidth: 0.5,
+            borderTopColor: theme.stroke,
+            flexDirection: 'row',
+            alignItems: 'center',
+            height: 64 + insets.bottom,
+            paddingBottom: insets.bottom,
+            elevation: 20,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: -2 },
+            shadowOpacity: 0.06,
+            shadowRadius: 8,
+          }}
+        >
+          {/* Vault Tab (Left) */}
+          <TouchableOpacity
+            style={{
+              flex: 1,
+              alignItems: 'center',
+              justifyContent: 'center',
+              paddingTop: 8,
+            }}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="shield-checkmark" size={22} color="#4F6EF7" />
+            <Text
+              style={{
+                fontSize: 11,
+                fontWeight: '600',
+                color: '#4F6EF7',
+                marginTop: 3,
+              }}
+            >
+              Vault
+            </Text>
           </TouchableOpacity>
 
+          {/* FAB (Center) */}
           <Animated.View
-            style={[
-              styles.fabWrapper,
-              {
-                transform: [{ scale: addButtonScale }],
-              },
-            ]}
+            style={{
+              width: 64,
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginTop: -20,
+              transform: [{ scale: addButtonScale }],
+            }}
           >
             <TouchableOpacity
-              style={styles.fab}
+              style={{
+                width: 56,
+                height: 56,
+                borderRadius: 28,
+                backgroundColor: '#4F6EF7',
+                alignItems: 'center',
+                justifyContent: 'center',
+                elevation: 12,
+                shadowColor: '#4F6EF7',
+                shadowOffset: { width: 0, height: 6 },
+                shadowOpacity: 0.4,
+                shadowRadius: 16,
+                borderWidth: 3,
+                borderColor: '#FFFFFF',
+              }}
               onPress={handleAddPress}
               activeOpacity={0.85}
             >
@@ -587,14 +717,28 @@ export default function Dashboard() {
             </TouchableOpacity>
           </Animated.View>
 
+          {/* Settings Tab (Right) */}
           <TouchableOpacity
-            style={styles.tabItem}
+            style={{
+              flex: 1,
+              alignItems: 'center',
+              justifyContent: 'center',
+              paddingTop: 8,
+            }}
             onPress={() => router.push('/settings')}
             activeOpacity={0.7}
           >
-            <View style={styles.inactiveIndicator} />
-            <Ionicons name="settings-outline" size={20} color={colors.textMuted} />
-            <Text style={styles.inactiveTabLabel}>Settings</Text>
+            <Ionicons name="settings-outline" size={22} color={theme.textSecondary} />
+            <Text
+              style={{
+                fontSize: 11,
+                fontWeight: '500',
+                color: theme.textSecondary,
+                marginTop: 3,
+              }}
+            >
+              Settings
+            </Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -675,24 +819,75 @@ export default function Dashboard() {
       />
 
       {/* Tab Bar */}
-      <View style={[styles.tabBar, { paddingBottom: insets.bottom + 8 }]}>
-        <TouchableOpacity style={styles.tabItem} activeOpacity={0.7}>
-          <View style={styles.activeIndicator}>
-            <Ionicons name="home" size={20} color={colors.primary} />
-          </View>
-          <Text style={styles.activeTabLabel}>Home</Text>
+      <View
+        style={{
+          position: 'absolute',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          backgroundColor: theme.surface,
+          borderTopWidth: 0.5,
+          borderTopColor: theme.stroke,
+          flexDirection: 'row',
+          alignItems: 'center',
+          height: 64 + insets.bottom,
+          paddingBottom: insets.bottom,
+          elevation: 20,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: -2 },
+          shadowOpacity: 0.06,
+          shadowRadius: 8,
+        }}
+      >
+        {/* Vault Tab (Left) */}
+        <TouchableOpacity
+          style={{
+            flex: 1,
+            alignItems: 'center',
+            justifyContent: 'center',
+            paddingTop: 8,
+          }}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="shield-checkmark" size={22} color="#4F6EF7" />
+          <Text
+            style={{
+              fontSize: 11,
+              fontWeight: '600',
+              color: '#4F6EF7',
+              marginTop: 3,
+            }}
+          >
+            Vault
+          </Text>
         </TouchableOpacity>
 
+        {/* FAB (Center) */}
         <Animated.View
-          style={[
-            styles.fabWrapper,
-            {
-              transform: [{ scale: addButtonScale }],
-            },
-          ]}
+          style={{
+            width: 64,
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginTop: -20,
+            transform: [{ scale: addButtonScale }],
+          }}
         >
           <TouchableOpacity
-            style={styles.fab}
+            style={{
+              width: 56,
+              height: 56,
+              borderRadius: 28,
+              backgroundColor: '#4F6EF7',
+              alignItems: 'center',
+              justifyContent: 'center',
+              elevation: 12,
+              shadowColor: '#4F6EF7',
+              shadowOffset: { width: 0, height: 6 },
+              shadowOpacity: 0.4,
+              shadowRadius: 16,
+              borderWidth: 3,
+              borderColor: '#FFFFFF',
+            }}
             onPress={handleAddPress}
             activeOpacity={0.85}
           >
@@ -700,14 +895,28 @@ export default function Dashboard() {
           </TouchableOpacity>
         </Animated.View>
 
+        {/* Settings Tab (Right) */}
         <TouchableOpacity
-          style={styles.tabItem}
+          style={{
+            flex: 1,
+            alignItems: 'center',
+            justifyContent: 'center',
+            paddingTop: 8,
+          }}
           onPress={() => router.push('/settings')}
           activeOpacity={0.7}
         >
-          <View style={styles.inactiveIndicator} />
-          <Ionicons name="settings-outline" size={20} color={colors.textMuted} />
-          <Text style={styles.inactiveTabLabel}>Settings</Text>
+          <Ionicons name="settings-outline" size={22} color={theme.textSecondary} />
+          <Text
+            style={{
+              fontSize: 11,
+              fontWeight: '500',
+              color: theme.textSecondary,
+              marginTop: 3,
+            }}
+          >
+            Settings
+          </Text>
         </TouchableOpacity>
       </View>
 
@@ -860,7 +1069,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingBottom: 16,
     paddingHorizontal: 20,
-    borderBottomWidth: 1,
+    borderBottomWidth: 0,
   },
   headerLeft: {
     width: 44,
@@ -894,7 +1103,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   searchContainer: {
-    borderBottomWidth: 1,
+    borderBottomWidth: 0,
     paddingHorizontal: 20,
     paddingVertical: 12,
   },
@@ -1091,7 +1300,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    borderTopWidth: 1,
+    borderTopWidth: 0.5,
     paddingTop: 10,
     flexDirection: 'row',
     alignItems: 'center',
