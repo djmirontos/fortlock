@@ -982,217 +982,256 @@ export default function Dashboard() {
               },
             ]}
           >
-            {/* Drag Handle */}
             <View
-              style={{
-                width: 36,
-                height: 4,
-                backgroundColor: theme.stroke,
-                borderRadius: 2,
-                alignSelf: 'center',
-                marginBottom: 16,
-                marginTop: 8,
-              }}
-            />
-
-            {/* Service Info Header */}
-            <View
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 12,
-                paddingBottom: 16,
-                borderBottomWidth: 1,
-                borderBottomColor: theme.surfaceSecondary,
-                marginBottom: 8,
-              }}
+              style={[
+                styles.modalSheet,
+                {
+                  backgroundColor: theme.surface,
+                  paddingBottom: insets.bottom + 16,
+                },
+              ]}
             >
-              <ServiceLogo serviceName={selectedCredential.data.serviceName} size={44} />
-              <View style={{ flex: 1 }}>
-                <Text
+              {/* Drag Handle */}
+              <View
+                style={{
+                  width: 36,
+                  height: 4,
+                  backgroundColor: theme.stroke,
+                  borderRadius: 2,
+                  alignSelf: 'center',
+                  marginTop: 8,
+                  marginBottom: 16,
+                }}
+              />
+
+              {/* Service Header */}
+              {selectedCredential && (
+                <View
                   style={{
-                    fontSize: 16,
-                    fontWeight: 'bold',
-                    color: theme.textPrimary,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 12,
+                    paddingBottom: 16,
+                    borderBottomWidth: 1,
+                    borderBottomColor: theme.surfaceSecondary,
+                    marginBottom: 8,
+                    paddingHorizontal: 4,
                   }}
                 >
-                  {selectedCredential.data.serviceName}
-                </Text>
-                <Text
+                  <ServiceLogo
+                    serviceName={selectedCredential.data?.serviceName || ''}
+                    size={44}
+                  />
+                  <View style={{ flex: 1 }}>
+                    <Text
+                      style={{
+                        fontSize: 16,
+                        fontWeight: '700',
+                        color: theme.textPrimary,
+                      }}
+                    >
+                      {selectedCredential.data?.serviceName || ''}
+                    </Text>
+                    <Text
+                      style={{
+                        fontSize: 13,
+                        color: theme.textSecondary,
+                        marginTop: 2,
+                      }}
+                    >
+                      {selectedCredential.data?.username ||
+                        selectedCredential.data?.cardHolder ||
+                        ''}
+                    </Text>
+                    <Text
+                      style={{
+                        fontSize: 11,
+                        color: theme.textSecondary,
+                        marginTop: 2,
+                      }}
+                    >
+                      Added {formatDate(selectedCredential.createdAt)}
+                    </Text>
+                  </View>
+                </View>
+              )}
+
+              {/* Copy Option */}
+              <TouchableOpacity
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  height: 56,
+                  gap: 14,
+                }}
+                onPress={() => {
+                  const text =
+                    selectedCredential?.category === 'banking'
+                      ? selectedCredential?.data?.cardNumber || ''
+                      : selectedCredential?.data?.password || '';
+                  handleCopy(
+                    text,
+                    selectedCredential?.category === 'banking'
+                      ? 'Card number'
+                      : 'Password'
+                  );
+                  closeModal();
+                }}
+              >
+                <View
                   style={{
-                    fontSize: 13,
-                    color: theme.textSecondary,
-                    marginTop: 2,
+                    width: 36,
+                    height: 36,
+                    borderRadius: 10,
+                    backgroundColor: '#EFF6FF',
+                    alignItems: 'center',
+                    justifyContent: 'center',
                   }}
                 >
-                  {selectedCredential.data.username}
-                </Text>
+                  <Ionicons name="copy-outline" size={18} color="#4F6FFF" />
+                </View>
                 <Text
+                  style={{ flex: 1, fontSize: 15, color: theme.textPrimary }}
+                >
+                  {selectedCredential?.category === 'banking'
+                    ? 'Copy Card Number'
+                    : 'Copy Password'}
+                </Text>
+                <Ionicons name="chevron-forward" size={16} color={theme.stroke} />
+              </TouchableOpacity>
+
+              {/* Divider */}
+              <View
+                style={{
+                  height: 1,
+                  backgroundColor: theme.surfaceSecondary,
+                  marginLeft: 50,
+                }}
+              />
+
+              {/* Favorites Option */}
+              <TouchableOpacity
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  height: 56,
+                  gap: 14,
+                }}
+                onPress={async () => {
+                  if (selectedCredential) {
+                    await toggleFavorite(selectedCredential.id);
+                    if (masterKey) {
+                      const updated = await getDecryptedCredentials(masterKey);
+                      setDecryptedCredentials(updated);
+                      setCredentials(updated);
+                    }
+                    closeModal();
+                  }
+                }}
+              >
+                <View
                   style={{
-                    fontSize: 11,
-                    color: theme.textSecondary,
-                    marginTop: 2,
+                    width: 36,
+                    height: 36,
+                    borderRadius: 10,
+                    backgroundColor: selectedCredential?.isFavorite
+                      ? '#FFFBEB'
+                      : theme.surfaceSecondary,
+                    alignItems: 'center',
+                    justifyContent: 'center',
                   }}
                 >
-                  Added {formatDate(selectedCredential.createdAt)}
+                  <Ionicons
+                    name={
+                      selectedCredential?.isFavorite
+                        ? 'star'
+                        : 'star-outline'
+                    }
+                    size={18}
+                    color={
+                      selectedCredential?.isFavorite
+                        ? '#F59E0B'
+                        : theme.textSecondary
+                    }
+                  />
+                </View>
+                <Text
+                  style={{ flex: 1, fontSize: 15, color: theme.textPrimary }}
+                >
+                  {selectedCredential?.isFavorite
+                    ? 'Remove from Favorites'
+                    : 'Add to Favorites'}
                 </Text>
-              </View>
+                <Ionicons name="chevron-forward" size={16} color={theme.stroke} />
+              </TouchableOpacity>
+
+              {/* Divider */}
+              <View
+                style={{
+                  height: 1,
+                  backgroundColor: theme.surfaceSecondary,
+                  marginLeft: 50,
+                }}
+              />
+
+              {/* Delete Option */}
+              <TouchableOpacity
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  height: 56,
+                  gap: 14,
+                }}
+                onPress={() => {
+                  closeModal();
+                  setTimeout(() => {
+                    Alert.alert(
+                      'Delete Credential',
+                      'This action cannot be undone.',
+                      [
+                        { text: 'Cancel', style: 'cancel' },
+                        {
+                          text: 'Delete',
+                          style: 'destructive',
+                          onPress: async () => {
+                            if (selectedCredential) {
+                              await deleteCredential(
+                                selectedCredential.id
+                              );
+                              if (masterKey) {
+                                const updated =
+                                  await getDecryptedCredentials(masterKey);
+                                setDecryptedCredentials(updated);
+                                setCredentials(updated);
+                              }
+                            }
+                          },
+                        },
+                      ]
+                    );
+                  }, 300);
+                }}
+              >
+                <View
+                  style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: 10,
+                    backgroundColor: '#FEF2F2',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Ionicons name="trash-outline" size={18} color="#EF4444" />
+                </View>
+                <Text
+                  style={{ flex: 1, fontSize: 15, color: '#EF4444' }}
+                >
+                  Delete
+                </Text>
+                <Ionicons name="chevron-forward" size={16} color="#EF4444" />
+              </TouchableOpacity>
             </View>
-
-            {/* Copy Option */}
-            <TouchableOpacity
-              style={{
-                height: 56,
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 14,
-              }}
-              onPress={() => {
-                handleCopy(selectedCredential.data.password, 'Password');
-                closeModal();
-              }}
-            >
-              <View
-                style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: 10,
-                  backgroundColor: '#EFF6FF',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <Ionicons name="copy-outline" size={18} color="#4F6FFF" />
-              </View>
-              <Text
-                style={{
-                  flex: 1,
-                  fontSize: 15,
-                  color: theme.textPrimary,
-                }}
-              >
-                Copy Password
-              </Text>
-              <Ionicons name="chevron-forward" size={16} color={theme.stroke} />
-            </TouchableOpacity>
-
-            {/* Divider */}
-            <View
-              style={{
-                height: 1,
-                backgroundColor: theme.surfaceSecondary,
-                marginLeft: 50,
-              }}
-            />
-
-            {/* Favorites Option */}
-            <TouchableOpacity
-              style={{
-                height: 56,
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 14,
-              }}
-              onPress={async () => {
-                await toggleFavorite(selectedCredential.id);
-                if (masterKey) {
-                  const updated = await getDecryptedCredentials(masterKey);
-                  setDecryptedCredentials(updated);
-                }
-                closeModal();
-              }}
-            >
-              <View
-                style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: 10,
-                  backgroundColor: selectedCredential.isFavorite ? '#FFFBEB' : theme.surfaceSecondary,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <Ionicons
-                  name={selectedCredential.isFavorite ? 'star' : 'star-outline'}
-                  size={18}
-                  color={selectedCredential.isFavorite ? '#F59E0B' : theme.textSecondary}
-                />
-              </View>
-              <Text
-                style={{
-                  flex: 1,
-                  fontSize: 15,
-                  color: theme.textPrimary,
-                }}
-              >
-                {selectedCredential.isFavorite ? 'Remove from Favorites' : 'Add to Favorites'}
-              </Text>
-              <Ionicons name="chevron-forward" size={16} color={theme.stroke} />
-            </TouchableOpacity>
-
-            {/* Divider */}
-            <View
-              style={{
-                height: 1,
-                backgroundColor: theme.surfaceSecondary,
-                marginLeft: 50,
-              }}
-            />
-
-            {/* Delete Option */}
-            <TouchableOpacity
-              style={{
-                height: 56,
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 14,
-                paddingBottom: insets.bottom + 16,
-              }}
-              onPress={() => {
-                Alert.alert(
-                  'Delete Credential',
-                  `Are you sure you want to delete "${selectedCredential.data.serviceName}"?`,
-                  [
-                    { text: 'Cancel', style: 'cancel' },
-                    {
-                      text: 'Delete',
-                      style: 'destructive',
-                      onPress: async () => {
-                        await deleteCredential(selectedCredential.id);
-                        if (masterKey) {
-                          const updated = await getDecryptedCredentials(masterKey);
-                          setDecryptedCredentials(updated);
-                        }
-                        closeModal();
-                      },
-                    },
-                  ]
-                );
-              }}
-            >
-              <View
-                style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: 10,
-                  backgroundColor: '#FEF2F2',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <Ionicons name="trash-outline" size={18} color="#EF4444" />
-              </View>
-              <Text
-                style={{
-                  flex: 1,
-                  fontSize: 15,
-                  color: '#EF4444',
-                }}
-              >
-                Delete
-              </Text>
-              <Ionicons name="chevron-forward" size={16} color={theme.stroke} />
-            </TouchableOpacity>
           </Animated.View>
         </Modal>
       )}
@@ -1519,6 +1558,11 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     paddingTop: 8,
+    paddingHorizontal: 20,
+  },
+  modalSheet: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
     paddingHorizontal: 20,
   },
   dragHandle: {
