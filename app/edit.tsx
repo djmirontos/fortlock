@@ -4,7 +4,6 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  StyleSheet,
   ScrollView,
   StatusBar,
   ActivityIndicator,
@@ -13,6 +12,7 @@ import {
   Animated,
   Alert,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../hooks/useTheme";
@@ -28,6 +28,19 @@ const CATEGORIES = [
   { key: "email", label: "Email" },
 ];
 
+const COLORS = {
+  background: "#F2F2F7",
+  card: "#FFFFFF",
+  accent: "#4F6EF7",
+  textPrimary: "#1C1C1E",
+  textSecondary: "#8E8E93",
+  border: "#E2E8F0",
+  divider: "#F2F2F7",
+  placeholder: "#C7C7CC",
+  disabledBg: "#E5E5EA",
+  disabledText: "#C7C7CC",
+};
+
 const formatCardNumber = (text: string): string => {
   const digits = text.replace(/\D/g, "");
   const groups = digits.match(/.{1,4}/g) || [];
@@ -42,6 +55,7 @@ const formatExpiryDate = (text: string): string => {
 
 export default function EditCredential() {
   const theme = useTheme();
+  const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { decryptedCredentials, masterKey, setDecryptedCredentials } = useAuthStore();
   const credential = decryptedCredentials.find((c) => c.id === id) as DecryptedCredential | undefined;
@@ -157,32 +171,61 @@ export default function EditCredential() {
     }
   };
 
-  if (loading) {
-    return (
-      <View style={[styles.container, { backgroundColor: theme.background }]}>
-        <StatusBar
-          barStyle={theme === LightTheme ? "dark-content" : "light-content"}
-          backgroundColor={theme.surface}
-          translucent={false}
-        />
-        <ActivityIndicator size="large" color={theme.primary} style={{ marginTop: 200 }} />
-      </View>
-    );
-  }
+  const formValid = !!isFormValid();
+
+  const labelStyle = {
+    fontSize: 12,
+    fontWeight: "600" as const,
+    color: COLORS.textSecondary,
+    marginBottom: 4,
+    textTransform: "uppercase" as const,
+    letterSpacing: 0.4,
+  };
+
+  const inputStyle = {
+    fontSize: 15,
+    fontWeight: "500" as const,
+    color: COLORS.textPrimary,
+    padding: 0,
+  };
+
+  const fieldRowStyle = {
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    minHeight: 64,
+  };
+
+  const dividerStyle = {
+    height: 1,
+    backgroundColor: COLORS.divider,
+  };
 
   if (!credential) {
     return (
-      <View style={[styles.container, { backgroundColor: theme.background }]}>
+      <View style={{ flex: 1, backgroundColor: theme.background }}>
         <StatusBar
           barStyle={theme === LightTheme ? "dark-content" : "light-content"}
           backgroundColor={theme.surface}
           translucent={false}
         />
-        <View style={[styles.header, { backgroundColor: theme.surface }]}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+        <View
+          style={{
+            height: 60,
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+            paddingHorizontal: 16,
+            width: "100%",
+            backgroundColor: theme.surface,
+          }}
+        >
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={{ width: 40, height: 40, justifyContent: "center", alignItems: "center" }}
+          >
             <Ionicons name="chevron-back" size={24} color={theme.primary} />
           </TouchableOpacity>
-          <Text style={[styles.headerTitle, { color: theme.textPrimary }]}>
+          <Text style={{ fontSize: 17, fontWeight: "600", flex: 1, textAlign: "center", color: theme.textPrimary }}>
             Edit Credential
           </Text>
           <View style={{ width: 40 }} />
@@ -196,25 +239,25 @@ export default function EditCredential() {
 
   if (!masterKey) {
     return (
-      <View style={[styles.container, { flex: 1, backgroundColor: theme.background }]}>
+      <View style={{ flex: 1, backgroundColor: theme.background }}>
         <StatusBar
           barStyle={theme === LightTheme ? "dark-content" : "light-content"}
           backgroundColor={theme.surface}
           translucent={false}
         />
-        <View style={styles.sessionExpired}>
+        <View style={{ flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 24, gap: 16 }}>
           <Ionicons name="lock-closed" size={48} color={theme.textSecondary} />
-          <Text style={[styles.sessionText, { color: theme.textPrimary }]}>
+          <Text style={{ fontSize: 20, fontWeight: "700", color: theme.textPrimary }}>
             Session Expired
           </Text>
-          <Text style={[styles.sessionSub, { color: theme.textSecondary }]}>
+          <Text style={{ fontSize: 14, textAlign: "center", lineHeight: 20, color: theme.textSecondary }}>
             Please login again to continue
           </Text>
           <TouchableOpacity
-            style={[styles.loginButton, { backgroundColor: theme.primary }]}
+            style={{ paddingHorizontal: 32, paddingVertical: 14, borderRadius: 12, marginTop: 8, backgroundColor: theme.primary }}
             onPress={() => router.replace("/")}
           >
-            <Text style={styles.loginButtonText}>Go to Login</Text>
+            <Text style={{ color: "#FFFFFF", fontSize: 16, fontWeight: "700" }}>Go to Login</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -222,26 +265,76 @@ export default function EditCredential() {
   }
 
   return (
-    <View style={[styles.container, { flex: 1, backgroundColor: theme.background }]}>
-      <StatusBar
-        barStyle={theme === LightTheme ? "dark-content" : "light-content"}
-        backgroundColor={theme.surface}
-        translucent={false}
-      />
+    <View style={{ flex: 1, backgroundColor: COLORS.background }}>
+      <StatusBar barStyle="dark-content" backgroundColor={COLORS.card} translucent={false} />
 
-      {/* Header — OUTSIDE KeyboardAvoidingView, guaranteed full width */}
-      <View style={[styles.header, { backgroundColor: theme.surface }]}>
-        <TouchableOpacity
-          onPress={() => router.back()}
-          style={styles.backButton}
-        >
-          <Ionicons name="chevron-back" size={24} color={theme.primary} />
-        </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: theme.textPrimary }]}>
-          Edit Credential
-        </Text>
-        <View style={{ width: 40 }} />
+      {/* Header — OUTSIDE KeyboardAvoidingView (golden rule) */}
+      <View style={{ backgroundColor: COLORS.card, paddingTop: insets.top + 12 }}>
+        <View style={{ height: 60, flexDirection: "row", alignItems: "center", paddingHorizontal: 16 }}>
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={{ width: 40, height: 40, justifyContent: "center", alignItems: "center" }}
+          >
+            <Ionicons name="chevron-back" size={24} color={COLORS.accent} />
+          </TouchableOpacity>
+          <View style={{ flex: 1, alignItems: "center" }}>
+            <Text style={{ fontSize: 17, fontWeight: "700", color: COLORS.textPrimary }}>
+              Edit Credential
+            </Text>
+            <Text style={{ fontSize: 12, color: COLORS.textSecondary, marginTop: 2 }}>
+              Update your credential details
+            </Text>
+          </View>
+          <View style={{ width: 40 }} />
+        </View>
       </View>
+
+      {/* Category Chips — read-only, outside ScrollView */}
+      <View style={{ backgroundColor: COLORS.card, paddingHorizontal: 20, paddingVertical: 12 }}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ flexDirection: "row", gap: 8 }}
+        >
+          {CATEGORIES.map((cat) => {
+            const active = category === cat.key;
+            return (
+              <View
+                key={cat.key}
+                style={{
+                  height: 34,
+                  paddingHorizontal: 14,
+                  borderRadius: 17,
+                  justifyContent: "center",
+                  backgroundColor: active ? COLORS.accent : COLORS.background,
+                }}
+              >
+                <Text
+                  style={{
+                    fontSize: 13,
+                    fontWeight: active ? "600" : "500",
+                    color: active ? "#FFFFFF" : COLORS.textSecondary,
+                  }}
+                >
+                  {cat.label}
+                </Text>
+              </View>
+            );
+          })}
+        </ScrollView>
+      </View>
+      <Text
+        style={{
+          fontSize: 11,
+          color: COLORS.textSecondary,
+          paddingHorizontal: 20,
+          paddingTop: 4,
+          marginBottom: 8,
+          backgroundColor: COLORS.card,
+        }}
+      >
+        Category cannot be changed after creation
+      </Text>
 
       {/* Content — INSIDE KeyboardAvoidingView + ScrollView */}
       <KeyboardAvoidingView
@@ -250,147 +343,90 @@ export default function EditCredential() {
       >
         <ScrollView
           style={{ flex: 1 }}
-          contentContainerStyle={[styles.scrollContent, { paddingBottom: 32 }]}
+          contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 120 }}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          {/* Category Chips — Read-only */}
-          <View style={styles.chipsContainer}>
-            {CATEGORIES.map((cat) => (
-              <View
-                key={cat.key}
-                style={[
-                  styles.chip,
-                  {
-                    backgroundColor: category === cat.key ? theme.primary : theme.surfaceSecondary,
-                  },
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.chipText,
-                    {
-                      color: category === cat.key ? "#FFFFFF" : theme.textSecondary,
-                    },
-                  ]}
-                >
-                  {cat.label}
-                </Text>
-              </View>
-            ))}
-          </View>
-
-          {/* Category locked note */}
-          <Text style={[styles.categoryNote, { color: theme.textSecondary }]}>
-            Category cannot be changed after creation
-          </Text>
-
-          {isBanking ? (
-            <>
-              {/* Bank Name */}
-              <View style={styles.formGroup}>
-                <Text style={[styles.label, { color: theme.textSecondary }]}>
-                  Bank Name
-                </Text>
-                <TextInput
-                  style={[
-                    styles.input,
-                    {
-                      backgroundColor: theme.surface,
-                      borderColor: theme.stroke,
-                      color: theme.textPrimary,
-                    },
-                  ]}
-                  placeholder="Enter bank name"
-                  placeholderTextColor={theme.textSecondary}
-                  value={bankName}
-                  onChangeText={setBankName}
-                />
-              </View>
-
-              {/* Card Holder Name */}
-              <View style={styles.formGroup}>
-                <Text style={[styles.label, { color: theme.textSecondary }]}>
-                  Card Holder Name
-                </Text>
-                <TextInput
-                  style={[
-                    styles.input,
-                    {
-                      backgroundColor: theme.surface,
-                      borderColor: theme.stroke,
-                      color: theme.textPrimary,
-                    },
-                  ]}
-                  placeholder="e.g. JUAN DELA CRUZ"
-                  placeholderTextColor={theme.textSecondary}
-                  value={cardHolder}
-                  onChangeText={setCardHolder}
-                  autoCapitalize="characters"
-                />
-              </View>
-
-              {/* Card Number */}
-              <View style={styles.formGroup}>
-                <Text style={[styles.label, { color: theme.textSecondary }]}>
-                  Card Number
-                </Text>
-                <TextInput
-                  style={[
-                    styles.input,
-                    {
-                      backgroundColor: theme.surface,
-                      borderColor: theme.stroke,
-                      color: theme.textPrimary,
-                    },
-                  ]}
-                  placeholder="1234 5678 9012 3456"
-                  placeholderTextColor={theme.textSecondary}
-                  value={cardNumber}
-                  onChangeText={(text) => setCardNumber(formatCardNumber(text))}
-                  keyboardType="numeric"
-                  maxLength={19}
-                />
-              </View>
-
-              {/* Expiry and CVV Row */}
-              <View style={styles.rowContainer}>
-                <View style={[styles.formGroup, { flex: 1, marginRight: 12 }]}>
-                  <Text style={[styles.label, { color: theme.textSecondary }]}>
-                    Expiry
-                  </Text>
+          {/* Form Card */}
+          <View
+            style={{
+              backgroundColor: COLORS.card,
+              borderRadius: 20,
+              elevation: 1,
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.06,
+              shadowRadius: 8,
+              marginBottom: 16,
+              overflow: "hidden",
+            }}
+          >
+            {isBanking ? (
+              <>
+                {/* Bank Name */}
+                <View style={fieldRowStyle}>
+                  <Text style={labelStyle}>Bank Name</Text>
                   <TextInput
-                    style={[
-                      styles.input,
-                      {
-                        backgroundColor: theme.surface,
-                        borderColor: theme.stroke,
-                        color: theme.textPrimary,
-                      },
-                    ]}
+                    style={inputStyle}
+                    placeholder="Enter bank name"
+                    placeholderTextColor={COLORS.placeholder}
+                    value={bankName}
+                    onChangeText={setBankName}
+                  />
+                </View>
+                <View style={dividerStyle} />
+
+                {/* Card Holder Name */}
+                <View style={fieldRowStyle}>
+                  <Text style={labelStyle}>Card Holder Name</Text>
+                  <TextInput
+                    style={inputStyle}
+                    placeholder="e.g. JUAN DELA CRUZ"
+                    placeholderTextColor={COLORS.placeholder}
+                    value={cardHolder}
+                    onChangeText={setCardHolder}
+                    autoCapitalize="characters"
+                  />
+                </View>
+                <View style={dividerStyle} />
+
+                {/* Card Number */}
+                <View style={fieldRowStyle}>
+                  <Text style={labelStyle}>Card Number</Text>
+                  <TextInput
+                    style={inputStyle}
+                    placeholder="1234 5678 9012 3456"
+                    placeholderTextColor={COLORS.placeholder}
+                    value={cardNumber}
+                    onChangeText={(text) => setCardNumber(formatCardNumber(text))}
+                    keyboardType="numeric"
+                    maxLength={19}
+                  />
+                </View>
+                <View style={dividerStyle} />
+
+                {/* Expiry Date */}
+                <View style={fieldRowStyle}>
+                  <Text style={labelStyle}>Expiry Date</Text>
+                  <TextInput
+                    style={inputStyle}
                     placeholder="MM/YY"
-                    placeholderTextColor={theme.textSecondary}
+                    placeholderTextColor={COLORS.placeholder}
                     value={expiryDate}
                     onChangeText={(text) => setExpiryDate(formatExpiryDate(text))}
                     keyboardType="numeric"
                     maxLength={5}
                   />
                 </View>
-                <View style={[styles.formGroup, { flex: 1 }]}>
-                  <Text style={[styles.label, { color: theme.textSecondary }]}>
-                    CVV
-                  </Text>
+                <View style={dividerStyle} />
+
+                {/* CVV */}
+                <View style={fieldRowStyle}>
+                  <Text style={labelStyle}>CVV</Text>
                   <TextInput
-                    style={[
-                      styles.input,
-                      {
-                        backgroundColor: theme.surface,
-                        borderColor: theme.stroke,
-                        color: theme.textPrimary,
-                      },
-                    ]}
+                    style={inputStyle}
                     placeholder="123"
-                    placeholderTextColor={theme.textSecondary}
+                    placeholderTextColor={COLORS.placeholder}
                     value={cvv}
                     onChangeText={(text) => setCvv(text.replace(/\D/g, "").substring(0, 4))}
                     keyboardType="numeric"
@@ -398,317 +434,174 @@ export default function EditCredential() {
                     secureTextEntry
                   />
                 </View>
-              </View>
-            </>
-          ) : (
-            <>
-              {/* Service Name */}
-              <View style={styles.formGroup}>
-                <Text style={[styles.label, { color: theme.textSecondary }]}>
-                  Service Name
-                </Text>
-                <TextInput
-                  style={[
-                    styles.input,
-                    {
-                      backgroundColor: theme.surface,
-                      borderColor: theme.stroke,
-                      color: theme.textPrimary,
-                    },
-                  ]}
-                  placeholder="e.g. Gmail, Netflix, GitHub"
-                  placeholderTextColor={theme.textSecondary}
-                  value={serviceName}
-                  onChangeText={setServiceName}
-                />
-              </View>
-
-              {/* Username */}
-              <View style={styles.formGroup}>
-                <Text style={[styles.label, { color: theme.textSecondary }]}>
-                  Username
-                </Text>
-                <TextInput
-                  style={[
-                    styles.input,
-                    {
-                      backgroundColor: theme.surface,
-                      borderColor: theme.stroke,
-                      color: theme.textPrimary,
-                    },
-                  ]}
-                  placeholder="Enter your username or email"
-                  placeholderTextColor={theme.textSecondary}
-                  value={username}
-                  onChangeText={setUsername}
-                />
-              </View>
-
-              {/* Password */}
-              <View style={styles.formGroup}>
-                <Text style={[styles.label, { color: theme.textSecondary }]}>
-                  Password
-                </Text>
-                <View
-                  style={[
-                    styles.passwordInputContainer,
-                    {
-                      backgroundColor: theme.surface,
-                      borderColor: theme.stroke,
-                    },
-                  ]}
-                >
+              </>
+            ) : (
+              <>
+                {/* Website or App */}
+                <View style={fieldRowStyle}>
+                  <Text style={labelStyle}>Website or App</Text>
                   <TextInput
-                    style={[styles.passwordInput, { color: theme.textPrimary }]}
-                    placeholder="Enter password"
-                    placeholderTextColor={theme.textSecondary}
-                    value={password}
-                    onChangeText={setPassword}
-                    secureTextEntry={!showPassword}
+                    style={inputStyle}
+                    placeholder="e.g. Gmail, Netflix, GitHub"
+                    placeholderTextColor={COLORS.placeholder}
+                    value={serviceName}
+                    onChangeText={setServiceName}
+                    autoCapitalize="none"
+                    autoCorrect={false}
                   />
-                  <TouchableOpacity
-                    onPress={() => setShowPassword(!showPassword)}
-                    style={styles.eyeButton}
-                  >
-                    <Ionicons
-                      name={showPassword ? "eye-outline" : "eye-off-outline"}
-                      size={20}
-                      color={theme.textSecondary}
-                    />
-                  </TouchableOpacity>
                 </View>
-              </View>
-            </>
-          )}
+                <View style={dividerStyle} />
 
-          {/* Notes */}
-          <View style={styles.formGroup}>
-            <Text style={[styles.label, { color: theme.textSecondary }]}>
-              Notes (Optional)
+                {/* Username or Email */}
+                <View style={fieldRowStyle}>
+                  <Text style={labelStyle}>Username or Email</Text>
+                  <TextInput
+                    style={inputStyle}
+                    placeholder="Enter your username or email"
+                    placeholderTextColor={COLORS.placeholder}
+                    value={username}
+                    onChangeText={setUsername}
+                    autoCapitalize="none"
+                    keyboardType="email-address"
+                  />
+                </View>
+                <View style={dividerStyle} />
+
+                {/* Password */}
+                <View style={fieldRowStyle}>
+                  <Text style={labelStyle}>Password</Text>
+                  <View style={{ flexDirection: "row", alignItems: "center" }}>
+                    <TextInput
+                      style={[inputStyle, { flex: 1 }]}
+                      placeholder="Enter password"
+                      placeholderTextColor={COLORS.placeholder}
+                      value={password}
+                      onChangeText={setPassword}
+                      secureTextEntry={!showPassword}
+                    />
+                    <TouchableOpacity
+                      onPress={() => setShowPassword(!showPassword)}
+                      style={{ width: 40, height: 40, justifyContent: "center", alignItems: "center" }}
+                    >
+                      <Ionicons
+                        name={showPassword ? "eye-outline" : "eye-off-outline"}
+                        size={20}
+                        color={COLORS.textSecondary}
+                      />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </>
+            )}
+          </View>
+
+          {/* Notes Card */}
+          <View
+            style={{
+              backgroundColor: COLORS.card,
+              borderRadius: 20,
+              elevation: 1,
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.06,
+              shadowRadius: 8,
+              padding: 16,
+              marginBottom: 16,
+            }}
+          >
+            <Text style={labelStyle}>
+              Notes <Text style={{ fontWeight: "400", textTransform: "none" }}>(optional)</Text>
             </Text>
             <TextInput
-              style={[
-                styles.notesInput,
-                {
-                  backgroundColor: theme.surface,
-                  borderColor: theme.stroke,
-                  color: theme.textPrimary,
-                },
-              ]}
+              style={[inputStyle, { minHeight: 80, textAlignVertical: "top" }]}
               placeholder="Add any notes"
-              placeholderTextColor={theme.textSecondary}
+              placeholderTextColor={COLORS.placeholder}
               value={notes}
               onChangeText={setNotes}
               multiline
             />
           </View>
-
-          {/* Update Button */}
-          <TouchableOpacity
-            onPress={handleUpdate}
-            disabled={!isFormValid() || updating}
-            style={[
-              styles.updateButton,
-              {
-                backgroundColor: isFormValid() && !updating ? theme.primary : theme.surfaceSecondary,
-              },
-            ]}
-            activeOpacity={0.8}
-          >
-            {updating ? (
-              <ActivityIndicator color="#FFFFFF" />
-            ) : (
-              <Text style={styles.updateButtonText}>Update Credential</Text>
-            )}
-          </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>
 
-      {/* Success Toast */}
+      {/* Sticky Update Button */}
+      <View
+        style={{
+          position: "absolute",
+          bottom: 0,
+          left: 0,
+          right: 0,
+          backgroundColor: COLORS.card,
+          paddingHorizontal: 16,
+          paddingTop: 12,
+          paddingBottom: insets.bottom + 12,
+        }}
+      >
+        <TouchableOpacity
+          onPress={handleUpdate}
+          disabled={!formValid || updating}
+          activeOpacity={0.8}
+          style={{
+            height: 52,
+            borderRadius: 14,
+            alignItems: "center",
+            justifyContent: "center",
+            backgroundColor: formValid && !updating ? COLORS.accent : COLORS.disabledBg,
+          }}
+        >
+          {updating ? (
+            <ActivityIndicator color="#FFFFFF" />
+          ) : (
+            <Text
+              style={{
+                fontSize: 16,
+                fontWeight: "700",
+                color: formValid ? "#FFFFFF" : COLORS.disabledText,
+              }}
+            >
+              Update Credential
+            </Text>
+          )}
+        </TouchableOpacity>
+      </View>
+
+      {/* Success Toast — kept exactly as is */}
       {showToast && (
         <Animated.View
-          style={[
-            styles.toast,
-            {
-              opacity: toastOpacity,
-              transform: [{ translateY: toastTranslateY }],
-            },
-          ]}
+          style={{
+            position: "absolute",
+            top: 60,
+            left: 16,
+            right: 16,
+            backgroundColor: "#FFFFFF",
+            borderRadius: 16,
+            padding: 16,
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 12,
+            elevation: 8,
+            shadowColor: "#000",
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.12,
+            shadowRadius: 12,
+            borderLeftWidth: 4,
+            borderLeftColor: "#4CD964",
+            zIndex: 999,
+            opacity: toastOpacity,
+            transform: [{ translateY: toastTranslateY }],
+          }}
         >
           <Ionicons name="checkmark-circle" size={24} color="#4CD964" />
           <View style={{ flex: 1 }}>
-            <Text style={styles.toastTitle}>Updated Successfully</Text>
-            <Text style={styles.toastSubtitle}>Your credential has been updated</Text>
+            <Text style={{ fontSize: 14, fontWeight: "700", color: "#1C1C1E", marginBottom: 2 }}>
+              Updated Successfully
+            </Text>
+            <Text style={{ fontSize: 12, color: "#8E8E93" }}>
+              Your credential has been updated
+            </Text>
           </View>
         </Animated.View>
       )}
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  header: {
-    height: 60,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 16,
-    width: "100%",
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  headerTitle: {
-    fontSize: 17,
-    fontWeight: "600",
-    flex: 1,
-    textAlign: "center",
-  },
-  scrollContent: {
-    paddingHorizontal: 16,
-    paddingTop: 24,
-  },
-  chipsContainer: {
-    flexDirection: "row",
-    gap: 8,
-    marginBottom: 12,
-  },
-  chip: {
-    flex: 1,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 20,
-    alignItems: "center",
-  },
-  chipText: {
-    fontSize: 13,
-    fontWeight: "600",
-  },
-  categoryNote: {
-    fontSize: 11,
-    marginBottom: 24,
-  },
-  formGroup: {
-    marginBottom: 20,
-  },
-  label: {
-    fontSize: 13,
-    fontWeight: "500",
-    marginBottom: 4,
-  },
-  input: {
-    height: 52,
-    borderRadius: 12,
-    borderWidth: 1,
-    paddingHorizontal: 16,
-    fontSize: 15,
-    fontWeight: "500",
-  },
-  passwordInputContainer: {
-    height: 52,
-    borderRadius: 12,
-    borderWidth: 1,
-    paddingHorizontal: 16,
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  passwordInput: {
-    flex: 1,
-    fontSize: 15,
-    fontWeight: "500",
-  },
-  eyeButton: {
-    width: 40,
-    height: 40,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  rowContainer: {
-    flexDirection: "row",
-    gap: 0,
-  },
-  notesInput: {
-    minHeight: 90,
-    borderRadius: 12,
-    borderWidth: 1,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    fontSize: 15,
-    fontWeight: "500",
-    textAlignVertical: "top",
-  },
-  updateButton: {
-    height: 52,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  updateButtonText: {
-    color: "#FFFFFF",
-    fontSize: 16,
-    fontWeight: "700",
-  },
-  toast: {
-    position: "absolute",
-    top: 60,
-    left: 16,
-    right: 16,
-    backgroundColor: "#FFFFFF",
-    borderRadius: 16,
-    padding: 16,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    elevation: 8,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 12,
-    borderLeftWidth: 4,
-    borderLeftColor: "#4CD964",
-    zIndex: 999,
-  },
-  toastTitle: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: "#1C1C1E",
-    marginBottom: 2,
-  },
-  toastSubtitle: {
-    fontSize: 12,
-    color: "#8E8E93",
-  },
-  sessionExpired: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 24,
-    gap: 16,
-  },
-  sessionText: {
-    fontSize: 20,
-    fontWeight: "700",
-  },
-  sessionSub: {
-    fontSize: 14,
-    textAlign: "center",
-    lineHeight: 20,
-  },
-  loginButton: {
-    paddingHorizontal: 32,
-    paddingVertical: 14,
-    borderRadius: 12,
-    marginTop: 8,
-  },
-  loginButtonText: {
-    color: "#FFFFFF",
-    fontSize: 16,
-    fontWeight: "700",
-  },
-});

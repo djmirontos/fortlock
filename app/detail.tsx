@@ -1,15 +1,15 @@
-﻿import { useState, useRef } from "react";
+import { useState, useRef } from "react";
 import {
   View,
   Text,
   TouchableOpacity,
-  StyleSheet,
   ScrollView,
   Alert,
   Clipboard,
   StatusBar,
   Animated,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../hooks/useTheme";
@@ -19,8 +19,33 @@ import { LightTheme } from "../constants/theme";
 import { DecryptedCredential } from "../types";
 import ServiceLogo from "../components/ServiceLogo";
 
+const COLORS = {
+  background: "#F2F2F7",
+  card: "#FFFFFF",
+  accent: "#4F6EF7",
+  textPrimary: "#1C1C1E",
+  textSecondary: "#8E8E93",
+  danger: "#FF3B30",
+  divider: "#F2F2F7",
+};
+
+const getCategoryPillColor = (category: string) => {
+  switch (category) {
+    case "banking":
+      return { bg: "#EFF6FF", text: "#3B82F6" };
+    case "social":
+      return { bg: "#F0FDF4", text: "#16A34A" };
+    case "email":
+      return { bg: "#FFF7ED", text: "#EA580C" };
+    case "general":
+    default:
+      return { bg: "#F5F3FF", text: "#7C3AED" };
+  }
+};
+
 export default function DetailScreen() {
   const theme = useTheme();
+  const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { decryptedCredentials, masterKey, setDecryptedCredentials } = useAuthStore();
   const [showPassword, setShowPassword] = useState(false);
@@ -103,25 +128,25 @@ export default function DetailScreen() {
 
   if (!masterKey) {
     return (
-      <View style={[styles.container, { backgroundColor: theme.background }]}>
+      <View style={{ flex: 1, backgroundColor: theme.background }}>
         <StatusBar
           barStyle={theme === LightTheme ? "dark-content" : "light-content"}
           backgroundColor={theme.surface}
           translucent={false}
         />
-        <View style={styles.sessionExpired}>
+        <View style={{ flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 24, gap: 16 }}>
           <Ionicons name="lock-closed" size={48} color={theme.textSecondary} />
-          <Text style={[styles.sessionText, { color: theme.textPrimary }]}>
+          <Text style={{ fontSize: 20, fontWeight: "700", color: theme.textPrimary }}>
             Session Expired
           </Text>
-          <Text style={[styles.sessionSub, { color: theme.textSecondary }]}>
+          <Text style={{ fontSize: 14, textAlign: "center", lineHeight: 20, color: theme.textSecondary }}>
             Please login again to continue
           </Text>
           <TouchableOpacity
-            style={[styles.loginButton, { backgroundColor: theme.primary }]}
+            style={{ paddingHorizontal: 32, paddingVertical: 14, borderRadius: 12, marginTop: 8, backgroundColor: theme.primary }}
             onPress={() => router.replace("/")}
           >
-            <Text style={styles.loginButtonText}>Go to Login</Text>
+            <Text style={{ color: "#FFFFFF", fontSize: 16, fontWeight: "700" }}>Go to Login</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -130,17 +155,30 @@ export default function DetailScreen() {
 
   if (!credential) {
     return (
-      <View style={[styles.container, { backgroundColor: theme.background }]}>
+      <View style={{ flex: 1, backgroundColor: theme.background }}>
         <StatusBar
           barStyle={theme === LightTheme ? "dark-content" : "light-content"}
           backgroundColor={theme.surface}
           translucent={false}
         />
-        <View style={[styles.header, { backgroundColor: theme.surface }]}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+        <View
+          style={{
+            height: 60,
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+            paddingHorizontal: 16,
+            width: "100%",
+            backgroundColor: theme.surface,
+          }}
+        >
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={{ width: 40, height: 40, justifyContent: "center", alignItems: "center" }}
+          >
             <Ionicons name="chevron-back" size={24} color={theme.primary} />
           </TouchableOpacity>
-          <Text style={[styles.headerTitle, { color: theme.textPrimary }]}>
+          <Text style={{ fontSize: 17, fontWeight: "600", flex: 1, textAlign: "center", color: theme.textPrimary }}>
             Credential Detail
           </Text>
           <View style={{ width: 40 }} />
@@ -156,6 +194,7 @@ export default function DetailScreen() {
   const titleText = isBanking ? "Banking Detail" : "Credential Detail";
   const copyButtonText = isBanking ? "Copy Card Number" : "Copy Password";
   const copyValue = isBanking ? credential.data.cardNumber : credential.data.password;
+  const pillColor = getCategoryPillColor(credential.category);
 
   const formatCardNumber = (number: string): string => {
     return number.replace(/\s/g, "").match(/.{1,4}/g)?.join(" ") || number;
@@ -166,402 +205,354 @@ export default function DetailScreen() {
     return "**** **** **** " + digits.slice(-4);
   };
 
-  return (
-    <View style={[styles.container, { backgroundColor: theme.background }]}>
-      <StatusBar
-        barStyle={theme === LightTheme ? "dark-content" : "light-content"}
-        backgroundColor={theme.surface}
-        translucent={false}
-      />
+  const labelStyle = {
+    fontSize: 12,
+    fontWeight: "600" as const,
+    color: COLORS.textSecondary,
+    textTransform: "uppercase" as const,
+    letterSpacing: 0.4,
+    marginBottom: 4,
+  };
 
-      {/* Header */}
-      <View style={[styles.header, { backgroundColor: theme.surface }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Ionicons name="chevron-back" size={24} color={theme.primary} />
-        </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: theme.textPrimary }]}>
-          {titleText}
-        </Text>
-        <TouchableOpacity onPress={handleEdit} style={styles.editButton}>
-          <Ionicons name="create-outline" size={22} color={theme.primary} />
-        </TouchableOpacity>
+  const valueStyle = {
+    fontSize: 15,
+    fontWeight: "500" as const,
+    color: COLORS.textPrimary,
+  };
+
+  const fieldRowStyle = {
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    minHeight: 64,
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+  };
+
+  const dividerStyle = {
+    height: 1,
+    backgroundColor: COLORS.divider,
+  };
+
+  const hitSlop = { top: 10, bottom: 10, left: 10, right: 10 };
+
+  return (
+    <View style={{ flex: 1, backgroundColor: COLORS.background }}>
+      <StatusBar barStyle="dark-content" backgroundColor={COLORS.card} translucent={false} />
+
+      {/* Header — OUTSIDE ScrollView, direct child of container (golden rule) */}
+      <View style={{ backgroundColor: COLORS.card, paddingTop: insets.top + 12 }}>
+        <View style={{ height: 60, flexDirection: "row", alignItems: "center", paddingHorizontal: 16 }}>
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={{ width: 40, height: 40, justifyContent: "center", alignItems: "center" }}
+          >
+            <Ionicons name="chevron-back" size={24} color={COLORS.accent} />
+          </TouchableOpacity>
+          <Text
+            style={{
+              flex: 1,
+              textAlign: "center",
+              fontSize: 17,
+              fontWeight: "700",
+              color: COLORS.textPrimary,
+            }}
+          >
+            {titleText}
+          </Text>
+          <TouchableOpacity
+            onPress={handleEdit}
+            style={{ width: 40, height: 40, justifyContent: "center", alignItems: "center" }}
+          >
+            <Ionicons name="create-outline" size={22} color={COLORS.accent} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Content */}
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={{ paddingBottom: 32 }}
         showsVerticalScrollIndicator={false}
       >
-        {/* Service Card */}
-        <View style={[styles.serviceCard, { backgroundColor: theme.surface }]}>
-          <ServiceLogo serviceName={credential.data.serviceName} size={72} />
-          <Text style={[styles.serviceName, { color: theme.textPrimary }]}>
+        {/* Hero Section */}
+        <View
+          style={{
+            backgroundColor: COLORS.card,
+            paddingVertical: 24,
+            alignItems: "center",
+          }}
+        >
+          <ServiceLogo serviceName={credential.data.serviceName} size={64} />
+          <Text style={{ fontSize: 20, fontWeight: "700", color: COLORS.textPrimary, marginTop: 12 }}>
             {credential.data.serviceName}
           </Text>
+          <View
+            style={{
+              paddingHorizontal: 12,
+              paddingVertical: 4,
+              borderRadius: 12,
+              backgroundColor: pillColor.bg,
+              marginTop: 8,
+            }}
+          >
+            <Text style={{ fontSize: 12, fontWeight: "600", color: pillColor.text }}>
+              {credential.category.charAt(0).toUpperCase() + credential.category.slice(1)}
+            </Text>
+          </View>
         </View>
 
-        {/* Detail Fields */}
-        <View style={styles.fieldsContainer}>
-          {isBanking ? (
-            <>
-              {/* Card Holder */}
-              <View style={[styles.fieldCard, { backgroundColor: theme.surface }]}>
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>
-                    Card Holder
-                  </Text>
-                  <Text style={[styles.fieldValue, { color: theme.textPrimary }]}>
-                    {credential.data.cardHolder || "—"}
-                  </Text>
-                </View>
-                <TouchableOpacity
-                  onPress={() => handleCopy(credential.data.cardHolder || "", "Card holder")}
-                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                >
-                  <Ionicons name="copy-outline" size={20} color={theme.primary} />
-                </TouchableOpacity>
-              </View>
-
-              {/* Card Number */}
-              <View style={[styles.fieldCard, { backgroundColor: theme.surface }]}>
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>
-                    Card Number
-                  </Text>
-                  <Text style={[styles.fieldValue, { color: theme.textPrimary }]}>
-                    {showCardNumber ? formatCardNumber(credential.data.cardNumber!) : maskCardNumber(credential.data.cardNumber!)}
-                  </Text>
-                </View>
-                <TouchableOpacity
-                  onPress={() => setShowCardNumber(!showCardNumber)}
-                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                >
-                  <Ionicons
-                    name={showCardNumber ? "eye-off-outline" : "eye-outline"}
-                    size={20}
-                    color={theme.primary}
-                    style={{ marginRight: 12 }}
-                  />
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => handleCopy(credential.data.cardNumber || "", "Card number")}
-                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                >
-                  <Ionicons name="copy-outline" size={20} color={theme.primary} />
-                </TouchableOpacity>
-              </View>
-
-              {/* Expiry and CVV Row */}
-              <View style={styles.rowContainer}>
-                <View style={[styles.fieldCard, styles.halfCard, { backgroundColor: theme.surface }]}>
+        {/* Fields Section */}
+        <View style={{ paddingHorizontal: 16, marginTop: 8 }}>
+          <View
+            style={{
+              backgroundColor: COLORS.card,
+              borderRadius: 20,
+              overflow: "hidden",
+              elevation: 1,
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.06,
+              shadowRadius: 8,
+            }}
+          >
+            {isBanking ? (
+              <>
+                {/* Card Holder */}
+                <View style={fieldRowStyle}>
                   <View style={{ flex: 1 }}>
-                    <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>
-                      Expiry Date
+                    <Text style={labelStyle}>Card Holder</Text>
+                    <Text style={valueStyle}>{credential.data.cardHolder || "—"}</Text>
+                  </View>
+                  <TouchableOpacity
+                    onPress={() => handleCopy(credential.data.cardHolder || "", "Card holder")}
+                    hitSlop={hitSlop}
+                  >
+                    <Ionicons name="copy-outline" size={20} color={COLORS.accent} />
+                  </TouchableOpacity>
+                </View>
+                <View style={dividerStyle} />
+
+                {/* Card Number */}
+                <View style={fieldRowStyle}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={labelStyle}>Card Number</Text>
+                    <Text style={valueStyle}>
+                      {showCardNumber
+                        ? formatCardNumber(credential.data.cardNumber!)
+                        : maskCardNumber(credential.data.cardNumber!)}
                     </Text>
-                    <Text style={[styles.fieldValue, { color: theme.textPrimary }]}>
-                      {credential.data.expiryDate || "—"}
-                    </Text>
+                  </View>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 16 }}>
+                    <TouchableOpacity
+                      onPress={() => setShowCardNumber(!showCardNumber)}
+                      hitSlop={hitSlop}
+                    >
+                      <Ionicons
+                        name={showCardNumber ? "eye-off-outline" : "eye-outline"}
+                        size={20}
+                        color={COLORS.textSecondary}
+                      />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={() => handleCopy(credential.data.cardNumber || "", "Card number")}
+                      hitSlop={hitSlop}
+                    >
+                      <Ionicons name="copy-outline" size={20} color={COLORS.accent} />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+                <View style={dividerStyle} />
+
+                {/* Expiry Date */}
+                <View style={fieldRowStyle}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={labelStyle}>Expiry Date</Text>
+                    <Text style={valueStyle}>{credential.data.expiryDate || "—"}</Text>
                   </View>
                   <TouchableOpacity
                     onPress={() => handleCopy(credential.data.expiryDate || "", "Expiry date")}
-                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    hitSlop={hitSlop}
                   >
-                    <Ionicons name="copy-outline" size={20} color={theme.primary} />
+                    <Ionicons name="copy-outline" size={20} color={COLORS.accent} />
                   </TouchableOpacity>
                 </View>
+                <View style={dividerStyle} />
 
-                <View style={[styles.fieldCard, styles.halfCard, { backgroundColor: theme.surface }]}>
+                {/* CVV */}
+                <View style={fieldRowStyle}>
                   <View style={{ flex: 1 }}>
-                    <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>
-                      CVV
-                    </Text>
-                    <Text style={[styles.fieldValue, { color: theme.textPrimary }]}>
-                      {showCVV ? credential.data.cvv : "•••"}
-                    </Text>
+                    <Text style={labelStyle}>CVV</Text>
+                    <Text style={valueStyle}>{showCVV ? credential.data.cvv : "•••"}</Text>
+                  </View>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 16 }}>
+                    <TouchableOpacity onPress={() => setShowCVV(!showCVV)} hitSlop={hitSlop}>
+                      <Ionicons
+                        name={showCVV ? "eye-off-outline" : "eye-outline"}
+                        size={20}
+                        color={COLORS.textSecondary}
+                      />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={() => handleCopy(credential.data.cvv || "", "CVV")}
+                      hitSlop={hitSlop}
+                    >
+                      <Ionicons name="copy-outline" size={20} color={COLORS.accent} />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </>
+            ) : (
+              <>
+                {/* Username / Email */}
+                <View style={fieldRowStyle}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={labelStyle}>Username / Email</Text>
+                    <Text style={valueStyle}>{credential.data.username || "—"}</Text>
                   </View>
                   <TouchableOpacity
-                    onPress={() => setShowCVV(!showCVV)}
-                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    onPress={() => handleCopy(credential.data.username || "", "Username")}
+                    hitSlop={hitSlop}
                   >
-                    <Ionicons
-                      name={showCVV ? "eye-off-outline" : "eye-outline"}
-                      size={20}
-                      color={theme.primary}
-                      style={{ marginRight: 12 }}
-                    />
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    onPress={() => handleCopy(credential.data.cvv || "", "CVV")}
-                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                  >
-                    <Ionicons name="copy-outline" size={20} color={theme.primary} />
+                    <Ionicons name="copy-outline" size={20} color={COLORS.accent} />
                   </TouchableOpacity>
                 </View>
-              </View>
-            </>
-          ) : (
-            <>
-              {/* Username */}
-              <View style={[styles.fieldCard, { backgroundColor: theme.surface }]}>
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>
-                    Username
-                  </Text>
-                  <Text style={[styles.fieldValue, { color: theme.textPrimary }]}>
-                    {credential.data.username || "—"}
-                  </Text>
-                </View>
-                <TouchableOpacity
-                  onPress={() => handleCopy(credential.data.username || "", "Username")}
-                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                >
-                  <Ionicons name="copy-outline" size={20} color={theme.primary} />
-                </TouchableOpacity>
-              </View>
+                <View style={dividerStyle} />
 
-              {/* Password */}
-              <View style={[styles.fieldCard, { backgroundColor: theme.surface }]}>
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>
-                    Password
-                  </Text>
-                  <Text style={[styles.fieldValue, { color: theme.textPrimary }]}>
-                    {showPassword ? credential.data.password : "••••••••"}
-                  </Text>
+                {/* Password */}
+                <View style={fieldRowStyle}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={labelStyle}>Password</Text>
+                    <Text style={valueStyle}>
+                      {showPassword ? credential.data.password : "••••••••"}
+                    </Text>
+                  </View>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 16 }}>
+                    <TouchableOpacity
+                      onPress={() => setShowPassword(!showPassword)}
+                      hitSlop={hitSlop}
+                    >
+                      <Ionicons
+                        name={showPassword ? "eye-off-outline" : "eye-outline"}
+                        size={20}
+                        color={COLORS.textSecondary}
+                      />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={() => handleCopy(credential.data.password || "", "Password")}
+                      hitSlop={hitSlop}
+                    >
+                      <Ionicons name="copy-outline" size={20} color={COLORS.accent} />
+                    </TouchableOpacity>
+                  </View>
                 </View>
-                <TouchableOpacity
-                  onPress={() => setShowPassword(!showPassword)}
-                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                >
-                  <Ionicons
-                    name={showPassword ? "eye-off-outline" : "eye-outline"}
-                    size={20}
-                    color={theme.primary}
-                    style={{ marginRight: 12 }}
-                  />
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => handleCopy(credential.data.password || "", "Password")}
-                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                >
-                  <Ionicons name="copy-outline" size={20} color={theme.primary} />
-                </TouchableOpacity>
-              </View>
-            </>
-          )}
+              </>
+            )}
+          </View>
 
           {/* Notes (if exists) */}
           {credential.data.notes && (
-            <View style={[styles.fieldCard, { backgroundColor: theme.surface }]}>
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>
-                  Notes
-                </Text>
-                <Text style={[styles.fieldValue, { color: theme.textPrimary }]}>
-                  {credential.data.notes}
-                </Text>
+            <View
+              style={{
+                backgroundColor: COLORS.card,
+                borderRadius: 20,
+                overflow: "hidden",
+                elevation: 1,
+                shadowColor: "#000",
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.06,
+                shadowRadius: 8,
+                marginTop: 12,
+              }}
+            >
+              <View style={fieldRowStyle}>
+                <View style={{ flex: 1 }}>
+                  <Text style={labelStyle}>Notes</Text>
+                  <Text style={valueStyle}>{credential.data.notes}</Text>
+                </View>
+                <TouchableOpacity
+                  onPress={() => handleCopy(credential.data.notes || "", "Notes")}
+                  hitSlop={hitSlop}
+                >
+                  <Ionicons name="copy-outline" size={20} color={COLORS.accent} />
+                </TouchableOpacity>
               </View>
-              <TouchableOpacity
-                onPress={() => handleCopy(credential.data.notes || "", "Notes")}
-                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              >
-                <Ionicons name="copy-outline" size={20} color={theme.primary} />
-              </TouchableOpacity>
             </View>
           )}
         </View>
 
         {/* Action Buttons */}
-        <View style={styles.buttonsContainer}>
+        <View style={{ paddingHorizontal: 16, marginTop: 16, marginBottom: 32 }}>
           <TouchableOpacity
-            style={[styles.button, styles.copyButton, { backgroundColor: theme.primary }]}
+            style={{
+              width: "100%",
+              height: 52,
+              borderRadius: 14,
+              backgroundColor: COLORS.accent,
+              alignItems: "center",
+              justifyContent: "center",
+              marginBottom: 12,
+            }}
             onPress={() => handleCopy(copyValue || "", copyButtonText)}
           >
-            <Text style={styles.buttonText}>{copyButtonText}</Text>
+            <Text style={{ color: "#FFFFFF", fontSize: 15, fontWeight: "700" }}>
+              {copyButtonText}
+            </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.button, styles.deleteButton, { backgroundColor: theme.danger }]}
+            style={{
+              width: "100%",
+              height: 52,
+              borderRadius: 14,
+              backgroundColor: "#FEF2F2",
+              borderWidth: 1,
+              borderColor: "#FECACA",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
             onPress={handleDelete}
           >
-            <Text style={styles.buttonText}>Delete</Text>
+            <Text style={{ color: COLORS.danger, fontSize: 15, fontWeight: "700" }}>
+              Delete
+            </Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
 
-      {/* Success Toast */}
+      {/* Success Toast — kept exactly as is */}
       {showToast && (
         <Animated.View
-          style={[
-            styles.toast,
-            {
-              opacity: toastOpacity,
-              transform: [{ translateY: toastTranslateY }],
-            },
-          ]}
+          style={{
+            position: "absolute",
+            top: 60,
+            left: 16,
+            right: 16,
+            backgroundColor: "#FFFFFF",
+            borderRadius: 16,
+            padding: 16,
+            flexDirection: "row",
+            alignItems: "center",
+            borderLeftWidth: 4,
+            borderLeftColor: "#4CD964",
+            elevation: 8,
+            shadowColor: "#000",
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.12,
+            shadowRadius: 12,
+            zIndex: 999,
+            opacity: toastOpacity,
+            transform: [{ translateY: toastTranslateY }],
+          }}
         >
           <Ionicons name="checkmark-circle" size={24} color="#4CD964" />
           <View style={{ flex: 1, marginLeft: 12 }}>
-            <Text style={styles.toastTitle}>Copied!</Text>
-            <Text style={styles.toastSubtitle}>{toastMessage}</Text>
+            <Text style={{ fontSize: 14, fontWeight: "700", color: "#1C1C1E", marginBottom: 2 }}>
+              Copied!
+            </Text>
+            <Text style={{ fontSize: 12, color: "#8E8E93" }}>{toastMessage}</Text>
           </View>
         </Animated.View>
       )}
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  header: {
-    height: 60,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 16,
-    width: "100%",
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  editButton: {
-    width: 40,
-    height: 40,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  headerTitle: {
-    fontSize: 17,
-    fontWeight: "600",
-    flex: 1,
-    textAlign: "center",
-  },
-  scrollContent: {
-    paddingBottom: 32,
-  },
-  serviceCard: {
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 24,
-    height: 160,
-    width: "100%",
-  },
-  serviceName: {
-    fontSize: 20,
-    fontWeight: "700",
-    marginTop: 16,
-  },
-  fieldsContainer: {
-    paddingHorizontal: 16,
-    marginTop: 16,
-    gap: 12,
-  },
-  fieldCard: {
-    borderRadius: 16,
-    padding: 16,
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  fieldLabel: {
-    fontSize: 12,
-    fontWeight: "600",
-    marginBottom: 4,
-  },
-  fieldValue: {
-    fontSize: 15,
-    fontWeight: "500",
-  },
-  rowContainer: {
-    flexDirection: "row",
-    gap: 12,
-  },
-  halfCard: {
-    flex: 1,
-  },
-  buttonsContainer: {
-    flexDirection: "row",
-    gap: 12,
-    paddingHorizontal: 16,
-    marginTop: 24,
-  },
-  button: {
-    flex: 1,
-    height: 52,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  copyButton: {
-    flex: 1,
-  },
-  deleteButton: {
-    flex: 1,
-  },
-  buttonText: {
-    color: "#FFFFFF",
-    fontWeight: "700",
-    fontSize: 15,
-  },
-  toast: {
-    position: "absolute",
-    top: 60,
-    left: 16,
-    right: 16,
-    backgroundColor: "#FFFFFF",
-    borderRadius: 16,
-    padding: 16,
-    flexDirection: "row",
-    alignItems: "center",
-    borderLeftWidth: 4,
-    borderLeftColor: "#4CD964",
-    elevation: 8,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 12,
-    zIndex: 999,
-  },
-  toastTitle: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: "#1C1C1E",
-    marginBottom: 2,
-  },
-  toastSubtitle: {
-    fontSize: 12,
-    color: "#8E8E93",
-  },
-  sessionExpired: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 24,
-    gap: 16,
-  },
-  sessionText: {
-    fontSize: 20,
-    fontWeight: "700",
-  },
-  sessionSub: {
-    fontSize: 14,
-    textAlign: "center",
-    lineHeight: 20,
-  },
-  loginButton: {
-    paddingHorizontal: 32,
-    paddingVertical: 14,
-    borderRadius: 12,
-    marginTop: 8,
-  },
-  loginButtonText: {
-    color: "#FFFFFF",
-    fontSize: 16,
-    fontWeight: "700",
-  },
-});
