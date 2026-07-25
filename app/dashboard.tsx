@@ -412,8 +412,8 @@ export default function Dashboard() {
               justifyContent: 'space-between',
               alignItems: 'center',
               paddingHorizontal: 20,
-              marginBottom: 12,
-              marginTop: 20,
+              marginBottom: 10,
+              marginTop: 16,
             }}
           >
             <Text
@@ -425,7 +425,7 @@ export default function Dashboard() {
             >
               Favorites
             </Text>
-            {favorites.length > 3 && (
+            {favorites.length > 5 && (
               <Text
                 style={{
                   fontSize: 14,
@@ -436,127 +436,63 @@ export default function Dashboard() {
               </Text>
             )}
           </View>
-          {favorites.slice(0, 3).map((item) => (
-            <TouchableOpacity
-              key={item.id}
-              style={{
-                marginHorizontal: 20,
-                marginBottom: 8,
-                borderRadius: 20,
-                overflow: 'hidden',
-              }}
-              activeOpacity={0.7}
-              onPress={() => router.push({ pathname: '/detail', params: { id: item.id } })}
-            >
-              <View
+          <View
+            style={{
+              paddingHorizontal: 20,
+              gap: 6,
+            }}
+          >
+            {favorites.slice(0, 5).map((item) => (
+              <TouchableOpacity
+                key={item.id}
                 style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
                   backgroundColor: getCardGradient(item.category),
-                  padding: 16,
-                  borderRadius: 20,
+                  borderRadius: 14,
+                  padding: 12,
+                  gap: 12,
                   borderLeftWidth: 3,
                   borderLeftColor: getCategoryColor(item.category).text,
-                  elevation: 4,
+                  elevation: 2,
                   shadowColor: getCategoryShadowColor(item.category),
-                  shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: 0.12,
-                  shadowRadius: 8,
+                  shadowOffset: { width: 0, height: 1 },
+                  shadowOpacity: 0.08,
+                  shadowRadius: 4,
                 }}
+                activeOpacity={0.6}
+                onPress={() => router.push({ pathname: '/detail', params: { id: item.id } })}
               >
-                {/* Row 1: Logo + Name + Category */}
-                <View
-                  style={{
-                    flexDirection: 'row',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                  }}
-                >
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                    <ServiceLogo serviceName={item.data.serviceName} size={36} />
+                <ServiceLogo serviceName={item.data.serviceName} size={32} />
+                <View style={{ flex: 1, gap: 2 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                     <Text
                       style={{
-                        fontSize: 15,
-                        fontWeight: 'bold',
+                        fontSize: 14,
+                        fontWeight: '600',
                         color: theme.textPrimary,
+                        flex: 1,
                       }}
+                      numberOfLines={1}
                     >
                       {item.data.serviceName}
                     </Text>
+                    <Ionicons name="star" size={14} color="#F59E0B" />
                   </View>
-                  <View
-                    style={{
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      gap: 8,
-                    }}
-                  >
-                    <View
-                      style={{
-                        paddingHorizontal: 8,
-                        paddingVertical: 4,
-                        borderRadius: 6,
-                        backgroundColor: getCategoryColor(item.category).bg,
-                      }}
-                    >
-                      <Text
-                        style={{
-                          fontSize: 11,
-                          fontWeight: '600',
-                          color: getCategoryColor(item.category).text,
-                        }}
-                      >
-                        {item.category.charAt(0).toUpperCase() +
-                          item.category.slice(1)}
-                      </Text>
-                    </View>
-                    <Ionicons name="star" size={16} color="#F59E0B" />
-                  </View>
-                </View>
-
-                {/* Row 2: Masked Value */}
-                <Text
-                  style={{
-                    marginTop: 12,
-                    fontSize: 20,
-                    fontWeight: '300',
-                    letterSpacing: 3,
-                    color: theme.textSecondary,
-                    fontFamily: 'monospace',
-                  }}
-                >
-                  {item.category === 'banking' && item.data.cardNumber
-                    ? '**** ' + item.data.cardNumber.slice(-4)
-                    : '••••••••'}
-                </Text>
-
-                {/* Row 3: Username + Timestamp */}
-                <View
-                  style={{
-                    marginTop: 8,
-                    flexDirection: 'row',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                  }}
-                >
                   <Text
                     style={{
                       fontSize: 12,
                       color: theme.textSecondary,
                     }}
+                    numberOfLines={1}
                   >
                     {item.data.username || item.data.cardHolder || ''}
                   </Text>
-                  <Text
-                    style={{
-                      fontSize: 11,
-                      color: theme.textSecondary,
-                    }}
-                  >
-                    {formatDate(item.createdAt)}
-                  </Text>
                 </View>
-              </View>
-            </TouchableOpacity>
-          ))}
+                <Ionicons name="chevron-forward" size={14} color={theme.stroke} />
+              </TouchableOpacity>
+            ))}
+          </View>
         </View>
       )}
 
@@ -776,10 +712,10 @@ export default function Dashboard() {
               flexDirection: 'row',
               alignItems: 'center',
               backgroundColor: isSearchFocused ? theme.surface : theme.surfaceSecondary,
-              borderRadius: 16,
-              height: 50,
+              borderRadius: 18,
+              height: 52,
               paddingHorizontal: 14,
-              gap: 10,
+              gap: 8,
               borderWidth: 1,
               borderColor: isSearchFocused ? '#4F6FFF' : theme.stroke,
               elevation: isSearchFocused ? 6 : 2,
@@ -810,7 +746,7 @@ export default function Dashboard() {
                 <Ionicons name="close-circle" size={18} color={colors.textMuted} />
               </TouchableOpacity>
             ) : (
-              <Ionicons name="options-outline" size={18} color={colors.textSecondary} />
+              <Ionicons name="options-outline" size={16} color={colors.textSecondary} />
             )}
           </View>
         </View>
@@ -938,57 +874,57 @@ export default function Dashboard() {
       <View
         style={{
           backgroundColor: theme.surface,
-          paddingTop: insets.top + 12,
-          paddingBottom: 14,
+          paddingTop: insets.top + 8,
+          paddingBottom: 10,
           paddingHorizontal: 20,
+          paddingRight: 56,
           borderBottomWidth: 0,
         }}
       >
-        <View style={{ alignItems: 'center' }}>
-          <View
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 6,
+          }}
+        >
+          <Image
+            source={require('../assets/logo.png')}
             style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: 8,
+              width: 24,
+              height: 24,
+              borderRadius: 6,
             }}
-          >
-            <Image
-              source={require('../assets/logo.png')}
-              style={{
-                width: 28,
-                height: 28,
-                borderRadius: 8,
-              }}
-            />
-            <Text
-              style={{
-                fontSize: 18,
-                fontWeight: 'bold',
-                color: theme.textPrimary,
-              }}
-            >
-              FortLock
-            </Text>
-          </View>
+          />
           <Text
             style={{
-              marginTop: 2,
-              fontSize: 13,
-              color: theme.textSecondary,
+              fontSize: 18,
+              fontWeight: '700',
+              color: theme.textPrimary,
             }}
           >
-            {credentials.length} item{credentials.length !== 1 ? 's' : ''} secured
-          </Text>
-          <Text
-            style={{
-              marginTop: 1,
-              fontSize: 11,
-              color: theme.textSecondary,
-            }}
-          >
-            Last synced just now
+            FortLock
           </Text>
         </View>
+        <Text
+          style={{
+            marginTop: 3,
+            fontSize: 13,
+            color: theme.textSecondary,
+            fontWeight: '500',
+          }}
+        >
+          {credentials.length} item{credentials.length !== 1 ? 's' : ''} secured
+        </Text>
+        <Text
+          style={{
+            marginTop: 1,
+            fontSize: 11,
+            color: theme.textSecondary,
+          }}
+        >
+          Last synced just now
+        </Text>
         <TouchableOpacity
           onPress={() => {
             logout();
@@ -997,10 +933,10 @@ export default function Dashboard() {
           style={{
             position: 'absolute',
             right: 20,
-            top: insets.top + 16,
-            width: 34,
-            height: 34,
-            borderRadius: 17,
+            top: insets.top + 8,
+            width: 32,
+            height: 32,
+            borderRadius: 16,
             backgroundColor: theme.surfaceSecondary,
             alignItems: 'center',
             justifyContent: 'center',
@@ -1008,7 +944,7 @@ export default function Dashboard() {
         >
           <Ionicons
             name="lock-closed-outline"
-            size={16}
+            size={14}
             color={theme.textSecondary}
           />
         </TouchableOpacity>
@@ -1522,15 +1458,15 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   chip: {
-    height: 32,
-    paddingHorizontal: 12,
-    borderRadius: 16,
+    height: 36,
+    paddingHorizontal: 14,
+    borderRadius: 18,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
   },
   chipText: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '500',
   },
   sectionHeader: {
