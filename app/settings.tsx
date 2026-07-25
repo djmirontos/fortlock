@@ -211,13 +211,13 @@ export default function Settings() {
   return (
     <View style={[styles.container, { flex: 1, backgroundColor: theme.background }]}>
       <StatusBar
-        barStyle={theme === LightTheme ? "dark-content" : "light-content"}
+        barStyle={theme.background === '#F2F2F7' ? "dark-content" : "light-content"}
         backgroundColor={theme.surface}
         translucent={false}
       />
 
       {/* Header — OUTSIDE ScrollView, guaranteed full width */}
-      <View style={[styles.header, { backgroundColor: theme.surface }]}>
+      <View style={[styles.header, { backgroundColor: theme.surface, paddingTop: insets.top }]}>
         <Text style={[styles.headerTitle, { color: theme.textPrimary }]}>Settings</Text>
       </View>
 
@@ -649,10 +649,11 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    height: 60,
+    minHeight: 60,
     justifyContent: "center",
     alignItems: "center",
     paddingHorizontal: 16,
+    paddingBottom: 14,
     width: "100%",
   },
   headerTitle: {
