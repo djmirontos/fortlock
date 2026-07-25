@@ -3,7 +3,8 @@
     "allow": [
       "Bash(npm install *)",
       "Bash(node convert-logo.js)",
-      "Bash(npx tsc *)"
+      "Bash(npx tsc *)",
+      "Bash(npx expo *)"
     ]
   },
   "enabledPlugins": {
