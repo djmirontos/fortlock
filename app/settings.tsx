@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useRef } from "react";
+﻿import { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -8,7 +8,6 @@ import {
   Alert,
   Switch,
   StatusBar,
-  Animated,
   ActivityIndicator,
   Modal,
   TextInput,
@@ -37,7 +36,6 @@ export default function Settings() {
   const insets = useSafeAreaInsets();
   const theme = useTheme();
   const { themeMode, setThemeMode, autoLockTimer, setAutoLockTimer, masterKey, setMasterKey, setDecryptedCredentials, clearSecureMemory } = useAuthStore();
-  const addButtonScale = useRef(new Animated.Value(1)).current;
 
   const [biometricAvailable, setBiometricAvailable] = useState(false);
   const [biometricEnabled, setBiometricEnabled] = useState(false);
@@ -243,10 +241,6 @@ export default function Settings() {
   };
 
   const handleAddPress = () => {
-    Animated.sequence([
-      Animated.spring(addButtonScale, { toValue: 0.88, useNativeDriver: true, friction: 3, tension: 400 }),
-      Animated.spring(addButtonScale, { toValue: 1, useNativeDriver: true, friction: 3, tension: 400 }),
-    ]).start();
     router.push("/add");
   };
 
@@ -475,13 +469,12 @@ export default function Settings() {
         </TouchableOpacity>
 
         {/* FAB (Center) */}
-        <Animated.View
+        <View
           style={{
             width: 64,
             alignItems: 'center',
             justifyContent: 'center',
             marginTop: -20,
-            transform: [{ scale: addButtonScale }],
           }}
         >
           <TouchableOpacity
@@ -505,7 +498,7 @@ export default function Settings() {
           >
             <Ionicons name="add" size={28} color="#FFFFFF" />
           </TouchableOpacity>
-        </Animated.View>
+        </View>
 
         {/* Settings Tab (Right - Active) */}
         <TouchableOpacity

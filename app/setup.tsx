@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -88,7 +88,7 @@ export default function SetupScreen() {
   const strength = getStrengthInfo();
 
   // Animate strength bar
-  React.useEffect(() => {
+  useEffect(() => {
     Animated.spring(strengthBarWidth, {
       toValue: strength.width,
       useNativeDriver: false,
@@ -112,7 +112,8 @@ export default function SetupScreen() {
       const masterKey = await setupMasterPassword(password);
       await SecureStore.setItemAsync(
         'fortlock_biometric_key',
-        masterKey.toString('base64')
+        masterKey.toString('base64'),
+        { requireAuthentication: true, authenticationPrompt: 'Authenticate to save biometric access' }
       );
       setMasterKey(masterKey);
       setDecryptedCredentials([]);

@@ -1,5 +1,9 @@
 ﻿import { create } from 'zustand';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AuthState, ThemeMode, DecryptedCredential } from '../types';
+
+const THEME_KEY = 'fortlock_theme_mode';
+const AUTO_LOCK_KEY = 'fortlock_auto_lock_timer';
 
 interface AuthStore extends AuthState {
   // Security state (in-memory only, never persisted)
@@ -19,6 +23,7 @@ interface AuthStore extends AuthState {
   updateLastActive: () => void;
   clearSecureMemory: () => void;
   logout: () => void;
+  loadPersistedSettings: () => Promise<void>;
 }
 
 export const useAuthStore = create<AuthStore>((set) => ({
@@ -42,8 +47,10 @@ export const useAuthStore = create<AuthStore>((set) => ({
   setBiometricAvailable: (value) =>
     set({ biometricAvailable: value }),
 
-  setThemeMode: (mode) =>
-    set({ themeMode: mode }),
+  setThemeMode: (mode) => {
+    AsyncStorage.setItem(THEME_KEY, mode).catch(() => {});
+    set({ themeMode: mode });
+  },
 
   setMasterKey: (key) =>
     set({ masterKey: key }),
@@ -51,8 +58,27 @@ export const useAuthStore = create<AuthStore>((set) => ({
   setDecryptedCredentials: (creds) =>
     set({ decryptedCredentials: creds }),
 
-  setAutoLockTimer: (minutes) =>
-    set({ autoLockTimer: minutes }),
+  setAutoLockTimer: (minutes) => {
+    AsyncStorage.setItem(AUTO_LOCK_KEY, String(minutes)).catch(() => {});
+    set({ autoLockTimer: minutes });
+  },
+
+  loadPersistedSettings: async () => {
+    try {
+      const [theme, timer] = await Promise.all([
+        AsyncStorage.getItem(THEME_KEY),
+        AsyncStorage.getItem(AUTO_LOCK_KEY),
+      ]);
+      const updates: Partial<AuthStore> = {};
+      if (theme === 'light' || theme === 'dark' || theme === 'system') {
+        updates.themeMode = theme;
+      }
+      if (timer !== null && !isNaN(Number(timer))) {
+        updates.autoLockTimer = Number(timer);
+      }
+      if (Object.keys(updates).length > 0) set(updates);
+    } catch {}
+  },
 
   updateLastActive: () =>
     set({ lastActiveAt: Date.now() }),

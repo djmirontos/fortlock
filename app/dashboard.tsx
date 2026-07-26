@@ -7,7 +7,6 @@ import {
   FlatList,
   StatusBar,
   Alert,
-  Clipboard,
   Animated,
   Platform,
   UIManager,
@@ -26,6 +25,7 @@ import { getDecryptedCredentials, toggleFavorite, deleteCredential } from '../se
 import { DecryptedCredential } from '../types';
 import ServiceLogo from '../components/ServiceLogo';
 import { useAutoLock } from '../hooks/useAutoLock';
+import * as Clipboard from 'expo-clipboard';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -66,6 +66,7 @@ const getTimeAgo = (timestamp: number): string => {
   const minutes = Math.floor(diff / 60000);
   const hours = Math.floor(diff / 3600000);
   const days = Math.floor(diff / 86400000);
+  if (minutes < 1) return 'Just now';
   if (minutes < 60) return `${minutes}m ago`;
   if (hours < 24) return `${hours}h ago`;
   return `${days}d ago`;
@@ -191,10 +192,10 @@ export default function Dashboard() {
   const favorites = credentials.filter((c) => c.isFavorite === true);
 
   const handleCopy = (text: string, label: string) => {
-    Clipboard.setString(text);
+    Clipboard.setStringAsync(text);
     Alert.alert('Copied!', label + ' copied to clipboard.');
     setTimeout(() => {
-      Clipboard.setString('');
+      Clipboard.setStringAsync('');
     }, 30000);
   };
 

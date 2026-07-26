@@ -171,12 +171,18 @@ export const changeMasterPassword = async (
   const newKey = await setupMasterPassword(newPassword);
 
   // Re-encrypt all credentials with new key
-  const reEncrypted = credentials.map((cred, index) => {
-    onProgress?.(index + 1, credentials.length);
+  const reEncrypted: any[] = [];
+  for (let index = 0; index < credentials.length; index++) {
+    const cred = credentials[index];
     const data = decryptCredentialData(cred.encryptedData, currentKey);
     const newEncryptedData = encryptCredentialData(data, newKey);
-    return { ...cred, encryptedData: newEncryptedData };
-  });
+    reEncrypted.push({ ...cred, encryptedData: newEncryptedData });
+    onProgress?.(index + 1, credentials.length);
+    // Yield to JS thread every 5 credentials so UI can update
+    if (index % 5 === 0) {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    }
+  }
 
   // Save re-encrypted credentials
   await AsyncStorage.setItem(

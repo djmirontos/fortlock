@@ -36,8 +36,18 @@ const xmlEscape = (value: string): string => {
 
 // Export encrypted vault backup (.flbx) — no decryption needed
 export const exportFlbx = async (): Promise<void> => {
-  const data = await AsyncStorage.getItem(CREDENTIALS_KEY);
+  let data: string | null = null;
+  try {
+    data = await AsyncStorage.getItem(CREDENTIALS_KEY);
+  } catch {
+    throw new Error("Failed to read vault data. Please try again.");
+  }
+
   const credentials: Credential[] = data ? JSON.parse(data) : [];
+
+  if (credentials.length === 0) {
+    throw new Error("Your vault is empty. Add credentials before exporting.");
+  }
 
   const backup: BackupFile = {
     version: BACKUP_VERSION,
@@ -70,10 +80,20 @@ export const exportFlbx = async (): Promise<void> => {
 
 // Export plaintext CSV — requires masterKey for decryption
 export const exportCsv = async (masterKey: any): Promise<void> => {
-  const data = await AsyncStorage.getItem(CREDENTIALS_KEY);
+  let data: string | null = null;
+  try {
+    data = await AsyncStorage.getItem(CREDENTIALS_KEY);
+  } catch {
+    throw new Error("Failed to read vault data. Please try again.");
+  }
+
   const credentials: Credential[] = data ? JSON.parse(data) : [];
 
-  const header = "Title,Username,Password,URL,Notes,Category,CardHolder,CardNumber,ExpiryDate,CVV";
+  if (credentials.length === 0) {
+    throw new Error("Your vault is empty. Add credentials before exporting.");
+  }
+
+  const header = '"Title","Username","Password","URL","Notes","Category","CardHolder","CardNumber","ExpiryDate","CVV"';
   const rows = credentials.map((cred) => {
     const decrypted = decryptCredentialData(cred.encryptedData, masterKey);
     const fields = [
@@ -114,8 +134,18 @@ export const exportCsv = async (masterKey: any): Promise<void> => {
 
 // Export KeePass-compatible plaintext XML — requires masterKey for decryption
 export const exportXml = async (masterKey: any): Promise<void> => {
-  const data = await AsyncStorage.getItem(CREDENTIALS_KEY);
+  let data: string | null = null;
+  try {
+    data = await AsyncStorage.getItem(CREDENTIALS_KEY);
+  } catch {
+    throw new Error("Failed to read vault data. Please try again.");
+  }
+
   const credentials: Credential[] = data ? JSON.parse(data) : [];
+
+  if (credentials.length === 0) {
+    throw new Error("Your vault is empty. Add credentials before exporting.");
+  }
 
   const entries = credentials.map((cred) => {
     const decrypted = decryptCredentialData(cred.encryptedData, masterKey);

@@ -10,11 +10,14 @@ import ErrorBoundary from '../components/ErrorBoundary';
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
-  const { setLoading, themeMode } = useAuthStore();
+  const { setLoading, themeMode, loadPersistedSettings } = useAuthStore();
 
   useEffect(() => {
     const init = async () => {
-      await hasMasterPassword();
+      await Promise.all([
+        hasMasterPassword(),
+        loadPersistedSettings(),
+      ]);
       setLoading(false);
     };
     init();
@@ -30,7 +33,7 @@ export default function RootLayout() {
         <StatusBar style={isDark ? 'light' : 'dark'} />
         <Stack screenOptions={{
           headerShown: false,
-          contentStyle: { backgroundColor: '#F2F2F7' },
+          contentStyle: { backgroundColor: 'transparent' },
           animation: 'slide_from_right',
           animationDuration: 300,
           gestureEnabled: true,
