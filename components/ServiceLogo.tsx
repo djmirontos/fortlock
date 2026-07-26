@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { View, Image, Text, StyleSheet } from "react-native";
 import * as FileSystem from "expo-file-system/legacy";
 
@@ -6,6 +6,8 @@ interface ServiceLogoProps {
   serviceName: string;
   size?: number;
 }
+
+const memoryCache = new Map<string, string>();
 
 const getDomain = (name: string): string => {
   const domains: Record<string, string> = {
@@ -91,9 +93,14 @@ const getColorForInitial = (char: string): string => {
 };
 
 export default function ServiceLogo({ serviceName, size = 48 }: ServiceLogoProps) {
-  const [logoState, setLogoState] = useState<"placeholder" | "cached">("placeholder");
-  const [logoUri, setLogoUri] = useState<string>("");
-  const [domain, setDomain] = useState<string>("");
+  const foundDomainInit = getDomain(serviceName);
+  const cachedUriInit = foundDomainInit ? memoryCache.get(foundDomainInit) : undefined;
+
+  const [logoState, setLogoState] = useState<"placeholder" | "cached">(
+    cachedUriInit ? "cached" : "placeholder"
+  );
+  const [logoUri, setLogoUri] = useState<string>(cachedUriInit || "");
+  const [domain, setDomain] = useState<string>(foundDomainInit);
   const isMounted = useRef(true);
 
   useEffect(() => {
@@ -112,6 +119,15 @@ export default function ServiceLogo({ serviceName, size = 48 }: ServiceLogoProps
         return;
       }
 
+      // Check memory cache first — instant, no flash
+      if (memoryCache.has(foundDomain)) {
+        if (isMounted.current) {
+          setLogoUri(memoryCache.get(foundDomain)!);
+          setLogoState("cached");
+        }
+        return;
+      }
+
       const cacheFileName = `logo_${foundDomain.replace(/\./g, "_")}.png`;
       const cachePath = `${FileSystem.cacheDirectory}${cacheFileName}`;
 
@@ -120,6 +136,7 @@ export default function ServiceLogo({ serviceName, size = 48 }: ServiceLogoProps
         const info = await FileSystem.getInfoAsync(cachePath);
         if (info.exists) {
           console.log("Using cached logo for:", serviceName);
+          memoryCache.set(foundDomain, cachePath); // store in memory
           if (isMounted.current) {
             setLogoUri(cachePath);
             setLogoState("cached");
@@ -137,6 +154,7 @@ export default function ServiceLogo({ serviceName, size = 48 }: ServiceLogoProps
           const result = await FileSystem.downloadAsync(clearbitUrl, cachePath);
           if (result.status === 200) {
             console.log("Cached Clearbit logo for:", serviceName);
+            memoryCache.set(foundDomain, cachePath); // store in memory
             if (isMounted.current) {
               setLogoUri(cachePath);
               setLogoState("cached");
@@ -153,6 +171,7 @@ export default function ServiceLogo({ serviceName, size = 48 }: ServiceLogoProps
           const result = await FileSystem.downloadAsync(faviconUrl, cachePath);
           if (result.status === 200) {
             console.log("Cached Google favicon for:", serviceName);
+            memoryCache.set(foundDomain, cachePath); // store in memory
             if (isMounted.current) {
               setLogoUri(cachePath);
               setLogoState("cached");
