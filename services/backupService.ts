@@ -31,7 +31,7 @@ export const exportBackup = async (): Promise<void> => {
 
   const date = new Date();
   const dateStr = `${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, "0")}${String(date.getDate()).padStart(2, "0")}`;
-  const filename = `fortlock_backup_${dateStr}.json`;
+  const filename = `fortlock_backup_${dateStr}.flbx`;
   const filePath = FileSystem.cacheDirectory + filename;
 
   await FileSystem.writeAsStringAsync(filePath, jsonString, {
@@ -44,15 +44,15 @@ export const exportBackup = async (): Promise<void> => {
   }
 
   await Sharing.shareAsync(filePath, {
-    mimeType: "application/json",
+    mimeType: "application/octet-stream",
     dialogTitle: "Export FortLock Backup",
-    UTI: "public.json",
+    UTI: "public.data",
   });
 };
 
 export const importBackup = async (): Promise<number> => {
   const result = await DocumentPicker.getDocumentAsync({
-    type: ["application/json", "text/plain", "*/*"],
+    type: ["application/octet-stream", "text/plain", "*/*"],
     copyToCacheDirectory: true,
   });
 
@@ -61,6 +61,10 @@ export const importBackup = async (): Promise<number> => {
   }
 
   const file = result.assets[0];
+
+  if (!file.name?.endsWith('.flbx') && !file.name?.endsWith('.json')) {
+    throw new Error("Please select a valid FortLock backup file (.flbx)");
+  }
 
   const content = await FileSystem.readAsStringAsync(file.uri, {
     encoding: FileSystem.EncodingType.UTF8,
