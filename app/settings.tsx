@@ -20,7 +20,7 @@ import { useTheme } from "../hooks/useTheme";
 import { useAuthStore } from "../stores/authStore";
 import { clearAllCredentials, getRawCredentials, getDecryptedCredentials } from "../services/dbService";
 import { clearAllSecureData, changeMasterPassword } from "../services/cryptoService";
-import { exportBackup, importBackup } from "../services/backupService";
+import { exportFlbx, exportCsv, exportXml, importFlbx } from "../services/backupService";
 import * as LocalAuthentication from "expo-local-authentication";
 import { LightTheme } from "../constants/theme";
 
@@ -51,6 +51,7 @@ export default function Settings() {
   const [showNewPw, setShowNewPw] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
+  const [showExportSheet, setShowExportSheet] = useState(false);
 
   const timerOptions = [
     { label: "1 minute", value: 1 },
@@ -119,44 +120,85 @@ export default function Settings() {
     }
   };
 
-  const handleExport = async () => {
+  const handleExportFlbx = async () => {
     setIsExporting(true);
+    setShowExportSheet(false);
     try {
-      await exportBackup();
+      await exportFlbx();
     } catch (error: any) {
-      Alert.alert(
-        "Export Failed",
-        error.message || "Could not export backup. Please try again."
-      );
+      Alert.alert("Export Failed", error.message || "Could not export backup.");
     } finally {
       setIsExporting(false);
     }
   };
 
+  const handleExportCsv = async () => {
+    if (!masterKey) return;
+    setShowExportSheet(false);
+    Alert.alert(
+      "⚠️ Plaintext Export",
+      "CSV files are NOT encrypted. Anyone with this file can read your passwords. Only use for importing into another password manager.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Export Anyway",
+          style: "destructive",
+          onPress: async () => {
+            setIsExporting(true);
+            try {
+              await exportCsv(masterKey);
+            } catch (error: any) {
+              Alert.alert("Export Failed", error.message || "Could not export CSV.");
+            } finally {
+              setIsExporting(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleExportXml = async () => {
+    if (!masterKey) return;
+    setShowExportSheet(false);
+    Alert.alert(
+      "⚠️ Plaintext Export",
+      "XML files are NOT encrypted. Anyone with this file can read your passwords. Only use for importing into KeePass or another password manager.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Export Anyway",
+          style: "destructive",
+          onPress: async () => {
+            setIsExporting(true);
+            try {
+              await exportXml(masterKey);
+            } catch (error: any) {
+              Alert.alert("Export Failed", error.message || "Could not export XML.");
+            } finally {
+              setIsExporting(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const handleImport = async () => {
     setIsImporting(true);
     try {
-      const count = await importBackup();
+      const count = await importFlbx();
       if (count === 0) {
-        Alert.alert(
-          "Nothing Imported",
-          "No new credentials found in the backup file. All credentials may already exist."
-        );
+        Alert.alert("Nothing Imported", "No valid credentials found in the backup file.");
       } else {
         if (masterKey) {
           const updated = await getDecryptedCredentials(masterKey);
           setDecryptedCredentials(updated);
         }
-        Alert.alert(
-          "Import Successful! 🎉",
-          `${count} credential${count !== 1 ? "s" : ""} imported successfully.`
-        );
+        Alert.alert("Vault Restored! 🎉", `${count} credential${count !== 1 ? "s" : ""} loaded from backup.`);
       }
     } catch (error: any) {
-      Alert.alert(
-        "Import Failed",
-        error.message || "Could not read backup file. Make sure it's a valid FortLock backup."
-      );
+      Alert.alert("Import Failed", error.message || "Could not read backup file. Make sure it's a valid .flbx file.");
     } finally {
       setIsImporting(false);
     }
@@ -300,16 +342,16 @@ export default function Settings() {
         {/* General Section */}
         <Text style={[styles.sectionLabel, { color: theme.textSecondary }]}>General</Text>
         <View style={[styles.card, { backgroundColor: theme.surface }]}>
-          {/* Export Backup */}
+          {/* Export */}
           <TouchableOpacity
             style={[styles.row, { borderBottomWidth: 1, borderBottomColor: theme.stroke }]}
-            onPress={handleExport}
+            onPress={() => setShowExportSheet(true)}
             disabled={isExporting || isImporting}
             activeOpacity={0.7}
           >
             <View style={styles.rowLeft}>
               <Ionicons name="cloud-download-outline" size={20} color={theme.primary} />
-              <Text style={[styles.rowText, { color: theme.textPrimary }]}>Export Backup</Text>
+              <Text style={[styles.rowText, { color: theme.textPrimary }]}>Export Vault</Text>
             </View>
             {isExporting ? (
               <ActivityIndicator size="small" color={theme.primary} />
@@ -318,7 +360,7 @@ export default function Settings() {
             )}
           </TouchableOpacity>
 
-          {/* Import Backup */}
+          {/* Import / Restore */}
           <TouchableOpacity
             style={[styles.row, { borderBottomWidth: 1, borderBottomColor: theme.stroke }]}
             onPress={handleImport}
@@ -327,7 +369,7 @@ export default function Settings() {
           >
             <View style={styles.rowLeft}>
               <Ionicons name="cloud-upload-outline" size={20} color={theme.primary} />
-              <Text style={[styles.rowText, { color: theme.textPrimary }]}>Import Backup</Text>
+              <Text style={[styles.rowText, { color: theme.textPrimary }]}>Restore from Backup</Text>
             </View>
             {isImporting ? (
               <ActivityIndicator size="small" color={theme.primary} />
@@ -340,7 +382,7 @@ export default function Settings() {
           <View style={[styles.infoBox, { backgroundColor: theme.background }]}>
             <Ionicons name="shield-checkmark-outline" size={16} color={theme.primary} />
             <Text style={[styles.infoText, { color: theme.textSecondary }]}>
-              Backup files are encrypted. Only FortLock with your master password can read them.
+              .flbx backups are encrypted and can only be restored with your master password. CSV and XML exports are plaintext.
             </Text>
           </View>
 
@@ -637,6 +679,119 @@ export default function Settings() {
                 )}
               </TouchableOpacity>
             </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Export Format Sheet */}
+      <Modal
+        visible={showExportSheet}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowExportSheet(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <TouchableOpacity style={{ flex: 1 }} onPress={() => setShowExportSheet(false)} />
+          <View style={[styles.modalSheet, { backgroundColor: theme.surface, padding: 24 }]}>
+            <View style={[styles.dragHandle, { backgroundColor: theme.stroke }]} />
+
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: theme.textPrimary }]}>Export Vault</Text>
+              <TouchableOpacity onPress={() => setShowExportSheet(false)}>
+                <Ionicons name="close" size={24} color={theme.textSecondary} />
+              </TouchableOpacity>
+            </View>
+
+            {/* FLBX Option */}
+            <TouchableOpacity
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 14,
+                paddingVertical: 16,
+                borderBottomWidth: 1,
+                borderBottomColor: theme.stroke,
+              }}
+              onPress={handleExportFlbx}
+              activeOpacity={0.7}
+            >
+              <View style={{
+                width: 44, height: 44, borderRadius: 12,
+                backgroundColor: '#EFF6FF',
+                alignItems: 'center', justifyContent: 'center',
+              }}>
+                <Ionicons name="shield-checkmark-outline" size={22} color="#4F6EF7" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 15, fontWeight: '600', color: theme.textPrimary }}>
+                  Encrypted Backup (.flbx)
+                </Text>
+                <Text style={{ fontSize: 12, color: theme.textSecondary, marginTop: 2 }}>
+                  AES-256 encrypted. Use to restore your vault.
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={16} color={theme.stroke} />
+            </TouchableOpacity>
+
+            {/* CSV Option */}
+            <TouchableOpacity
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 14,
+                paddingVertical: 16,
+                borderBottomWidth: 1,
+                borderBottomColor: theme.stroke,
+              }}
+              onPress={handleExportCsv}
+              activeOpacity={0.7}
+            >
+              <View style={{
+                width: 44, height: 44, borderRadius: 12,
+                backgroundColor: '#F0FDF4',
+                alignItems: 'center', justifyContent: 'center',
+              }}>
+                <Ionicons name="document-text-outline" size={22} color="#16A34A" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 15, fontWeight: '600', color: theme.textPrimary }}>
+                  CSV Export (.csv)
+                </Text>
+                <Text style={{ fontSize: 12, color: theme.textSecondary, marginTop: 2 }}>
+                  Plaintext. Compatible with 1Password, Bitwarden, Chrome.
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={16} color={theme.stroke} />
+            </TouchableOpacity>
+
+            {/* XML Option */}
+            <TouchableOpacity
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 14,
+                paddingVertical: 16,
+              }}
+              onPress={handleExportXml}
+              activeOpacity={0.7}
+            >
+              <View style={{
+                width: 44, height: 44, borderRadius: 12,
+                backgroundColor: '#FFF7ED',
+                alignItems: 'center', justifyContent: 'center',
+              }}>
+                <Ionicons name="code-slash-outline" size={22} color="#EA580C" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 15, fontWeight: '600', color: theme.textPrimary }}>
+                  KeePass XML (.xml)
+                </Text>
+                <Text style={{ fontSize: 12, color: theme.textSecondary, marginTop: 2 }}>
+                  Plaintext. Compatible with KeePass and KeePassXC.
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={16} color={theme.stroke} />
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>
