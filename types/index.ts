@@ -48,3 +48,16 @@ export interface AuthState {
   biometricAvailable: boolean;
   themeMode: ThemeMode;
 }
+
+export interface TotpEntry {
+  id: string;
+  issuer: string;
+  account: string;
+  encryptedSecret: string; // AES-256-GCM encrypted TOTP secret
+  color: string;
+  createdAt: number;
+}
+
+export interface TotpEntryDecrypted extends TotpEntry {
+  secret: string;
+}

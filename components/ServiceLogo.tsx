@@ -28,6 +28,7 @@ const getDomain = (name: string): string => {
     rcbc: "rcbc.com",
     "security bank": "securitybank.com",
     chinabank: "chinabank.ph",
+    shipmoney: "shipmoney.com",
     eastwest: "eastwestbanker.com",
     // Digital Wallets & Payment
     gcash: "gcash.com",

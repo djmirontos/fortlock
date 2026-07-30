@@ -437,6 +437,7 @@ export default function Settings() {
           alignItems: 'center',
           height: 64 + insets.bottom,
           paddingBottom: insets.bottom,
+          paddingTop: 10,
           elevation: 20,
           shadowColor: '#000',
           shadowOffset: { width: 0, height: -2 },
@@ -444,85 +445,58 @@ export default function Settings() {
           shadowRadius: 8,
         }}
       >
-        {/* Vault Tab (Left - Inactive) */}
+        {/* Vault */}
         <TouchableOpacity
-          style={{
-            flex: 1,
-            alignItems: 'center',
-            justifyContent: 'center',
-            paddingTop: 8,
-          }}
-          onPress={() => router.replace("/dashboard")}
+          style={{ flex: 1, alignItems: 'center', gap: 3 }}
+          onPress={() => router.replace('/dashboard')}
           activeOpacity={0.7}
         >
-          <Ionicons name="shield-outline" size={22} color={theme.textSecondary} />
-          <Text
-            style={{
-              fontSize: 11,
-              fontWeight: '500',
-              color: theme.textSecondary,
-              marginTop: 3,
-            }}
-          >
-            Vault
-          </Text>
+          <Ionicons name="shield-outline" size={24} color={theme.textSecondary} />
+          <Text style={{ fontSize: 11, fontWeight: '500', color: theme.textSecondary }}>Vault</Text>
         </TouchableOpacity>
 
-        {/* FAB (Center) */}
-        <View
-          style={{
-            width: 64,
-            alignItems: 'center',
-            justifyContent: 'center',
-            marginTop: -20,
-          }}
-        >
-          <TouchableOpacity
-            style={{
-              width: 56,
-              height: 56,
-              borderRadius: 28,
-              backgroundColor: '#4F6EF7',
-              alignItems: 'center',
-              justifyContent: 'center',
-              elevation: 12,
-              shadowColor: '#4F6EF7',
-              shadowOffset: { width: 0, height: 6 },
-              shadowOpacity: 0.4,
-              shadowRadius: 16,
-              borderWidth: 3,
-              borderColor: '#FFFFFF',
-            }}
-            onPress={handleAddPress}
-            activeOpacity={0.8}
-          >
-            <Ionicons name="add" size={28} color="#FFFFFF" />
-          </TouchableOpacity>
-        </View>
-
-        {/* Settings Tab (Right - Active) */}
+        {/* Auth */}
         <TouchableOpacity
-          style={{
-            flex: 1,
-            alignItems: 'center',
-            justifyContent: 'center',
-            paddingTop: 8,
-          }}
+          style={{ flex: 1, alignItems: 'center', gap: 3 }}
+          onPress={() => router.replace('/authenticator')}
           activeOpacity={0.7}
         >
-          <Ionicons name="settings-sharp" size={22} color="#4F6EF7" />
-          <Text
-            style={{
-              fontSize: 11,
-              fontWeight: '600',
-              color: '#4F6EF7',
-              marginTop: 3,
-            }}
-          >
-            Settings
-          </Text>
+          <Ionicons name="key-outline" size={24} color={theme.textSecondary} />
+          <Text style={{ fontSize: 11, fontWeight: '500', color: theme.textSecondary }}>Auth</Text>
+        </TouchableOpacity>
+
+        {/* Settings — active */}
+        <TouchableOpacity
+          style={{ flex: 1, alignItems: 'center', gap: 3 }}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="settings-sharp" size={24} color="#4F6EF7" />
+          <Text style={{ fontSize: 11, fontWeight: '600', color: '#4F6EF7' }}>Settings</Text>
         </TouchableOpacity>
       </View>
+
+      {/* FAB — bottom right above tab bar */}
+      <TouchableOpacity
+        style={{
+          position: 'absolute',
+          bottom: insets.bottom + 64 + 16,
+          right: 20,
+          width: 56, height: 56, borderRadius: 28,
+          backgroundColor: '#4F6EF7',
+          alignItems: 'center', justifyContent: 'center',
+          elevation: 8,
+          shadowColor: '#4F6EF7',
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.4,
+          shadowRadius: 12,
+          borderWidth: 3,
+          borderColor: theme.surface,
+        }}
+        onPress={handleAddPress}
+        activeOpacity={0.85}
+      >
+        <Ionicons name="add" size={28} color="#FFFFFF" />
+      </TouchableOpacity>
 
       {/* Change Master Password Modal */}
       <Modal

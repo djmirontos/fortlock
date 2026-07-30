@@ -575,7 +575,6 @@ export default function Dashboard() {
           height: 64 + insets.bottom,
           flexDirection: 'row',
           alignItems: 'center',
-          justifyContent: 'space-around',
           elevation: 20,
           shadowColor: '#000',
           shadowOffset: { width: 0, height: -2 },
@@ -583,7 +582,7 @@ export default function Dashboard() {
           shadowRadius: 8,
         }}
       >
-        {/* Vault Tab */}
+        {/* Vault Tab — active */}
         <TouchableOpacity
           style={{ flex: 1, alignItems: 'center', gap: 3 }}
           activeOpacity={0.7}
@@ -592,37 +591,15 @@ export default function Dashboard() {
           <Text style={{ fontSize: 11, fontWeight: '600', color: '#4F6EF7' }}>Vault</Text>
         </TouchableOpacity>
 
-        {/* FAB */}
-        <Animated.View
-          style={{
-            alignItems: 'center',
-            justifyContent: 'center',
-            marginTop: -24,
-            transform: [{ scale: addButtonScale }],
-          }}
+        {/* Auth Tab */}
+        <TouchableOpacity
+          style={{ flex: 1, alignItems: 'center', gap: 3 }}
+          onPress={() => router.replace('/authenticator')}
+          activeOpacity={0.7}
         >
-          <TouchableOpacity
-            style={{
-              width: 56,
-              height: 56,
-              borderRadius: 28,
-              backgroundColor: '#4F6EF7',
-              alignItems: 'center',
-              justifyContent: 'center',
-              elevation: 8,
-              shadowColor: '#4F6EF7',
-              shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: 0.4,
-              shadowRadius: 12,
-              borderWidth: 3,
-              borderColor: theme.surface,
-            }}
-            onPress={handleAddPress}
-            activeOpacity={0.85}
-          >
-            <Ionicons name="add" size={28} color="#FFFFFF" />
-          </TouchableOpacity>
-        </Animated.View>
+          <Ionicons name="key-outline" size={24} color={theme.textSecondary} />
+          <Text style={{ fontSize: 11, fontWeight: '500', color: theme.textSecondary }}>Auth</Text>
+        </TouchableOpacity>
 
         {/* Settings Tab */}
         <TouchableOpacity
@@ -634,6 +611,38 @@ export default function Dashboard() {
           <Text style={{ fontSize: 11, fontWeight: '500', color: theme.textSecondary }}>Settings</Text>
         </TouchableOpacity>
       </View>
+
+      {/* FAB — bottom right, above tab bar */}
+      <Animated.View
+        style={{
+          position: 'absolute',
+          bottom: insets.bottom + 64 + 16,
+          right: 20,
+          transform: [{ scale: addButtonScale }],
+        }}
+      >
+        <TouchableOpacity
+          style={{
+            width: 56,
+            height: 56,
+            borderRadius: 28,
+            backgroundColor: '#4F6EF7',
+            alignItems: 'center',
+            justifyContent: 'center',
+            elevation: 8,
+            shadowColor: '#4F6EF7',
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.4,
+            shadowRadius: 12,
+            borderWidth: 3,
+            borderColor: theme.surface,
+          }}
+          onPress={handleAddPress}
+          activeOpacity={0.85}
+        >
+          <Ionicons name="add" size={28} color="#FFFFFF" />
+        </TouchableOpacity>
+      </Animated.View>
 
       {/* Favorites Modal */}
       <Modal visible={showFavoritesModal} transparent animationType="slide">
