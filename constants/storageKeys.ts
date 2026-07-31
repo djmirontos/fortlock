@@ -7,6 +7,7 @@ export const CREDENTIALS_KEY = 'fortlock_credentials';
 export const TOTP_KEY = 'fortlock_totp_entries';
 export const THEME_KEY = 'fortlock_theme_mode';
 export const AUTO_LOCK_KEY = 'fortlock_auto_lock_timer';
+export const TAGS_KEY = 'fortlock_tags';
 
 // SecureStore
 export const MASTER_HASH_KEY = 'fortlock_master_hash';

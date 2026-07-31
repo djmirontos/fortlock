@@ -17,15 +17,9 @@ import { router, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../hooks/useTheme";
 import { useAuthStore } from "../stores/authStore";
-import { updateCredential, getDecryptedCredentials } from "../services/dbService";
-import { DecryptedCredential, CredentialData, CredentialCategory } from "../types";
-
-const CATEGORIES = [
-  { key: "general", label: "General" },
-  { key: "banking", label: "Banking" },
-  { key: "social", label: "Social" },
-  { key: "email", label: "Email" },
-];
+import { updateCredential, getDecryptedCredentials, updateCredentialTags } from "../services/dbService";
+import { getTags } from "../services/tagService";
+import { DecryptedCredential, CredentialData, CredentialCategory, Tag } from "../types";
 
 const formatCardNumber = (text: string): string => {
   const digits = text.replace(/\D/g, "");
@@ -67,6 +61,8 @@ export default function EditCredential() {
 
   // Form state
   const [category, setCategory] = useState<CredentialCategory>("general");
+  const [tags, setTags] = useState<Tag[]>([]);
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [password, setPassword] = useState("");
   const [notes, setNotes] = useState("");
 
@@ -81,7 +77,19 @@ export default function EditCredential() {
   const [serviceName, setServiceName] = useState("");
   const [username, setUsername] = useState("");
 
-  const isBanking = category === "banking";
+  // Once a credential was created as banking its stored data holds card fields,
+  // so it stays banking-shaped even if the Banking tag is deselected.
+  const isBanking = selectedTags.includes('tag_banking') || credential?.category === 'banking';
+
+  useEffect(() => {
+    getTags().then(setTags).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (credential) {
+      setSelectedTags(credential.tags ?? []);
+    }
+  }, [credential]);
 
   useEffect(() => {
     if (credential) {
@@ -145,7 +153,9 @@ export default function EditCredential() {
 
     setUpdating(true);
     try {
-      const data: CredentialData = category === "banking" ? {
+      // Must match isBanking (which drives the rendered form), otherwise the
+      // fields the user actually filled in would be discarded on save.
+      const data: CredentialData = isBanking ? {
         serviceName: bankName,
         cardHolder: cardHolder.trim(),
         cardNumber: cardNumber.replace(/\s/g, ""),
@@ -160,6 +170,7 @@ export default function EditCredential() {
       };
 
       await updateCredential(credential.id, data, masterKey);
+      await updateCredentialTags(credential.id, selectedTags);
       const updated = await getDecryptedCredentials(masterKey);
       setDecryptedCredentials(updated);
       showSuccessToast();
@@ -289,52 +300,51 @@ export default function EditCredential() {
         </View>
       </View>
 
-      {/* Category Chips — read-only, outside ScrollView */}
-      <View style={{ backgroundColor: COLORS.card, paddingHorizontal: 20, paddingVertical: 12 }}>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ flexDirection: "row", gap: 8 }}
-        >
-          {CATEGORIES.map((cat) => {
-            const active = category === cat.key;
-            return (
-              <View
-                key={cat.key}
-                style={{
-                  height: 34,
-                  paddingHorizontal: 14,
-                  borderRadius: 17,
-                  justifyContent: "center",
-                  backgroundColor: active ? COLORS.accent : COLORS.background,
-                }}
-              >
-                <Text
-                  style={{
-                    fontSize: 13,
-                    fontWeight: active ? "600" : "500",
-                    color: active ? theme.surface : COLORS.textSecondary,
-                  }}
-                >
-                  {cat.label}
-                </Text>
-              </View>
-            );
-          })}
-        </ScrollView>
-      </View>
-      <Text
-        style={{
-          fontSize: 11,
-          color: COLORS.textSecondary,
-          paddingHorizontal: 20,
-          paddingTop: 4,
-          marginBottom: 8,
-          backgroundColor: COLORS.card,
-        }}
+      {/* Tag multi-select — editable, outside ScrollView */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{ paddingHorizontal: 20, paddingVertical: 12, gap: 8, flexDirection: 'row' }}
+        style={{ backgroundColor: theme.surface }}
       >
-        Category cannot be changed after creation
-      </Text>
+        {tags.map((tag) => {
+          const isSelected = selectedTags.includes(tag.id);
+          return (
+            <TouchableOpacity
+              key={tag.id}
+              style={{
+                height: 34,
+                paddingHorizontal: 14,
+                borderRadius: 17,
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 6,
+                backgroundColor: isSelected ? tag.color : theme.surfaceSecondary,
+              }}
+              onPress={() => {
+                setSelectedTags((prev) =>
+                  prev.includes(tag.id)
+                    ? prev.filter((id) => id !== tag.id)
+                    : [...prev, tag.id]
+                );
+              }}
+              activeOpacity={0.7}
+            >
+              <View style={{
+                width: 6, height: 6, borderRadius: 3,
+                backgroundColor: isSelected ? '#FFFFFF' : tag.color,
+              }} />
+              <Text style={{
+                fontSize: 13,
+                fontWeight: '600',
+                color: isSelected ? '#FFFFFF' : theme.textSecondary,
+              }}>
+                {tag.label}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
 
       {/* Content — INSIDE KeyboardAvoidingView + ScrollView */}
       <KeyboardAvoidingView

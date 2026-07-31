@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
   Modal,
   TextInput,
+  FlatList,
 } from "react-native";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -20,6 +21,8 @@ import { useAuthStore } from "../stores/authStore";
 import { clearAllCredentials, getRawCredentials, getDecryptedCredentials } from "../services/dbService";
 import { clearAllSecureData, changeMasterPassword } from "../services/cryptoService";
 import { exportFlbx, exportCsv, exportXml, importFlbx } from "../services/backupService";
+import { getTags, addTag, updateTag, deleteTag } from "../services/tagService";
+import { Tag } from "../types";
 import * as LocalAuthentication from "expo-local-authentication";
 import * as SecureStore from "expo-secure-store";
 import { BIOMETRIC_KEY, BIOMETRIC_ENABLED_KEY } from "../constants/storageKeys";
@@ -52,6 +55,11 @@ export default function Settings() {
   const [isExporting, setIsExporting] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   const [showExportSheet, setShowExportSheet] = useState(false);
+  const [tags, setTags] = useState<Tag[]>([]);
+  const [showTagsModal, setShowTagsModal] = useState(false);
+  const [newTagLabel, setNewTagLabel] = useState('');
+  const [editingTag, setEditingTag] = useState<Tag | null>(null);
+  const [editTagLabel, setEditTagLabel] = useState('');
 
   const timerOptions = [
     { label: "1 minute", value: 1 },
@@ -81,6 +89,63 @@ export default function Settings() {
     };
     checkBiometric();
   }, []);
+
+  useEffect(() => {
+    getTags().then(setTags).catch(() => {});
+  }, []);
+
+  const handleAddTag = async () => {
+    if (!newTagLabel.trim()) return;
+    try {
+      const tag = await addTag(newTagLabel);
+      setTags((prev) => [...prev, tag]);
+      setNewTagLabel('');
+    } catch (e: any) {
+      Alert.alert('Tag', e.message);
+    }
+  };
+
+  const handleDeleteTag = (tag: Tag) => {
+    Alert.alert(
+      'Delete Tag',
+      `Delete "${tag.label}"? It will be removed from all credentials.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            await deleteTag(tag.id);
+            setTags((prev) => prev.filter((t) => t.id !== tag.id));
+            // deleteTag strips the ID from credentials in storage; re-read so the
+            // in-memory store (and the dashboard chips) reflect it immediately.
+            if (masterKey) {
+              const updated = await getDecryptedCredentials(masterKey);
+              setDecryptedCredentials(updated);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleEditTag = async () => {
+    if (!editingTag || !editTagLabel.trim()) return;
+    // Clear edit state up-front so a second invocation (onSubmitEditing and
+    // onBlur can both fire) early-returns instead of re-running the update.
+    const tag = editingTag;
+    const label = editTagLabel;
+    setEditingTag(null);
+    setEditTagLabel('');
+    try {
+      await updateTag(tag.id, label);
+      setTags((prev) => prev.map((t) => t.id === tag.id ? { ...t, label } : t));
+    } catch (e: any) {
+      Alert.alert('Tag', e.message);
+      setEditingTag(tag);
+      setEditTagLabel(label);
+    }
+  };
 
   const toggleBiometric = async (value: boolean) => {
     if (togglingBiometric) return;
@@ -394,6 +459,25 @@ export default function Settings() {
               ))}
             </View>
           </View>
+        </View>
+
+        {/* Tags Section */}
+        <Text style={[styles.sectionLabel, { color: theme.textSecondary }]}>Tags</Text>
+        <View style={[styles.card, { backgroundColor: theme.surface }]}>
+          <TouchableOpacity
+            style={[styles.row, { borderBottomWidth: 0 }]}
+            onPress={() => setShowTagsModal(true)}
+            activeOpacity={0.7}
+          >
+            <View style={styles.rowLeft}>
+              <Ionicons name="pricetag-outline" size={20} color={theme.primary} />
+              <Text style={[styles.rowText, { color: theme.textPrimary }]}>Manage Tags</Text>
+            </View>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Text style={{ color: theme.textSecondary, fontSize: 14 }}>{tags.length}</Text>
+              <Ionicons name="chevron-forward" size={20} color={theme.textSecondary} />
+            </View>
+          </TouchableOpacity>
         </View>
 
         {/* General Section */}
@@ -822,6 +906,101 @@ export default function Settings() {
               </View>
               <Ionicons name="chevron-forward" size={16} color={theme.stroke} />
             </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Manage Tags */}
+      <Modal
+        visible={showTagsModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowTagsModal(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <TouchableOpacity style={{ flex: 1 }} onPress={() => setShowTagsModal(false)} />
+          <View style={[styles.modalSheet, { backgroundColor: theme.surface, padding: 0, maxHeight: '85%' }]}>
+            <View style={[styles.dragHandle, { backgroundColor: theme.stroke, marginTop: 8, alignSelf: 'center' }]} />
+
+            <View style={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Text style={[styles.modalTitle, { color: theme.textPrimary }]}>Manage Tags</Text>
+              <TouchableOpacity onPress={() => setShowTagsModal(false)}>
+                <Ionicons name="close" size={22} color={theme.textSecondary} />
+              </TouchableOpacity>
+            </View>
+
+            {/* Add new tag */}
+            <View style={{ paddingHorizontal: 20, paddingBottom: 16, flexDirection: 'row', gap: 10 }}>
+              <View style={[styles.inputWrapper, { flex: 1, backgroundColor: theme.background, borderColor: theme.stroke }]}>
+                <TextInput
+                  style={[styles.input, { color: theme.textPrimary }]}
+                  placeholder="New tag name..."
+                  placeholderTextColor={theme.textSecondary}
+                  value={newTagLabel}
+                  onChangeText={setNewTagLabel}
+                  autoCapitalize="words"
+                  autoCorrect={false}
+                  onSubmitEditing={handleAddTag}
+                />
+              </View>
+              <TouchableOpacity
+                style={{
+                  width: 52, height: 52, borderRadius: 12,
+                  backgroundColor: newTagLabel.trim() ? '#4F6EF7' : theme.surfaceSecondary,
+                  alignItems: 'center', justifyContent: 'center',
+                }}
+                onPress={handleAddTag}
+                disabled={!newTagLabel.trim()}
+              >
+                <Ionicons name="add" size={24} color={newTagLabel.trim() ? '#FFFFFF' : theme.textSecondary} />
+              </TouchableOpacity>
+            </View>
+
+            {/* Tags list */}
+            <FlatList
+              data={tags}
+              keyExtractor={(item) => item.id}
+              style={{ maxHeight: 400 }}
+              contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 20 }}
+              renderItem={({ item }) => (
+                <View style={{
+                  flexDirection: 'row', alignItems: 'center',
+                  paddingVertical: 12, gap: 12,
+                  borderBottomWidth: 1, borderBottomColor: theme.surfaceSecondary,
+                }}>
+                  <View style={{
+                    width: 12, height: 12, borderRadius: 6,
+                    backgroundColor: item.color,
+                  }} />
+                  {editingTag?.id === item.id ? (
+                    <TextInput
+                      style={[styles.input, { flex: 1, color: theme.textPrimary, fontSize: 15 }]}
+                      value={editTagLabel}
+                      onChangeText={setEditTagLabel}
+                      autoFocus
+                      onSubmitEditing={handleEditTag}
+                      onBlur={handleEditTag}
+                    />
+                  ) : (
+                    <Text style={{ flex: 1, fontSize: 15, color: theme.textPrimary, fontWeight: '500' }}>
+                      {item.label}
+                    </Text>
+                  )}
+                  <TouchableOpacity
+                    onPress={() => { setEditingTag(item); setEditTagLabel(item.label); }}
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                  >
+                    <Ionicons name="pencil-outline" size={18} color={theme.textSecondary} />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => handleDeleteTag(item)}
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                  >
+                    <Ionicons name="trash-outline" size={18} color="#EF4444" />
+                  </TouchableOpacity>
+                </View>
+              )}
+            />
           </View>
         </View>
       </Modal>

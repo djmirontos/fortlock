@@ -24,6 +24,9 @@ export interface CredentialData {
 export interface Credential {
   id: string;
   category: CredentialCategory;
+  // Optional: credentials saved before tags existed have no `tags` key, so
+  // reads must tolerate undefined until a migration backfills them.
+  tags?: string[];
   createdAt: number;
   updatedAt: number;
   isFavorite: boolean;
@@ -60,4 +63,11 @@ export interface TotpEntry {
 
 export interface TotpEntryDecrypted extends TotpEntry {
   secret: string;
+}
+
+export interface Tag {
+  id: string;
+  label: string;
+  color: string;
+  createdAt: number;
 }

@@ -16,12 +16,13 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../stores/authStore';
 import { useTheme } from '../hooks/useTheme';
 import { getDecryptedCredentials, toggleFavorite, deleteCredential } from '../services/dbService';
-import { DecryptedCredential } from '../types';
+import { getTags } from '../services/tagService';
+import { DecryptedCredential, Tag } from '../types';
 import ServiceLogo from '../components/ServiceLogo';
 import { useAutoLock } from '../hooks/useAutoLock';
 import * as Clipboard from 'expo-clipboard';
@@ -45,15 +46,6 @@ const BRAND_colors = {
   generalBg: '#F5F3FF',
   generalText: '#7C3AED',
 };
-
-// `as const` keeps `icon` as literal types so it satisfies Ionicons' name union
-const CATEGORIES = [
-  { key: 'all', label: 'All', icon: 'apps' },
-  { key: 'banking', label: 'Banking', icon: 'card-outline' },
-  { key: 'social', label: 'Social', icon: 'people-outline' },
-  { key: 'email', label: 'Email', icon: 'mail-outline' },
-  { key: 'general', label: 'General', icon: 'grid-outline' },
-] as const;
 
 const formatDate = (timestamp: number): string => {
   const date = new Date(timestamp);
@@ -81,29 +73,16 @@ export default function Dashboard() {
   // does not need re-decrypting on each focus.
   const credentials = useAuthStore((s) => s.decryptedCredentials);
   const [search, setSearch] = useState('');
-  const [activeCategory, setActiveCategory] = useState('all');
+  const [activeTag, setActiveTag] = useState('all');
   const [sortBy, setSortBy] = useState('recent');
   const [selectedCredential, setSelectedCredential] = useState<DecryptedCredential | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [showFavoritesModal, setShowFavoritesModal] = useState(false);
+  const [tags, setTags] = useState<Tag[]>([]);
 
   const isDark = theme.isDark;
-
-  const getCategoryColor = (category: string) => {
-    switch (category) {
-      case 'banking':
-        return { bg: BRAND_colors.bankingBg, text: BRAND_colors.bankingText };
-      case 'social':
-        return { bg: BRAND_colors.socialBg, text: BRAND_colors.socialText };
-      case 'email':
-        return { bg: BRAND_colors.emailBg, text: BRAND_colors.emailText };
-      case 'general':
-      default:
-        return { bg: BRAND_colors.generalBg, text: BRAND_colors.generalText };
-    }
-  };
 
   const getCategoryAccentColor = (category: string): string => {
     switch (category) {
@@ -124,6 +103,12 @@ export default function Dashboard() {
   const addButtonScale = useRef(new Animated.Value(1)).current;
 
   useAutoLock();
+
+  useFocusEffect(
+    useCallback(() => {
+      getTags().then(setTags).catch(() => {});
+    }, [])
+  );
 
   const closeModal = () => {
     Animated.timing(modalAnimation, {
@@ -170,8 +155,8 @@ export default function Dashboard() {
 
   const filtered = useMemo(() => {
     let result = [...credentials];
-    if (activeCategory !== 'all') {
-      result = result.filter((c) => c.category === activeCategory);
+    if (activeTag !== 'all') {
+      result = result.filter((c) => Array.isArray(c.tags) && c.tags.includes(activeTag));
     }
     if (search.trim()) {
       const lower = search.toLowerCase();
@@ -189,7 +174,7 @@ export default function Dashboard() {
       result.sort((a, b) => b.updatedAt - a.updatedAt);
     }
     return result;
-  }, [credentials, activeCategory, search, sortBy]);
+  }, [credentials, activeTag, search, sortBy]);
 
   const favorites = credentials.filter((c) => c.isFavorite === true);
 
@@ -209,8 +194,8 @@ export default function Dashboard() {
     router.push('/add');
   };
 
-  const renderChip = useCallback(({ item }: { item: typeof CATEGORIES[number] }) => {
-    const isActive = activeCategory === item.key;
+  const renderChip = useCallback(({ item }: { item: Tag | { id: string; label: string; color: string } }) => {
+    const isActive = activeTag === item.id;
     return (
       <TouchableOpacity
         style={{
@@ -220,28 +205,25 @@ export default function Dashboard() {
           flexDirection: 'row',
           alignItems: 'center',
           gap: 4,
-          backgroundColor: isActive ? '#4F6EF7' : theme.surfaceSecondary,
+          backgroundColor: isActive ? item.color : theme.surfaceSecondary,
         }}
-        onPress={() => setActiveCategory(item.key)}
+        onPress={() => setActiveTag(item.id)}
         activeOpacity={0.7}
       >
-        <Ionicons
-          name={item.icon}
-          size={13}
-          color={isActive ? '#FFFFFF' : theme.textSecondary}
-        />
-        <Text
-          style={{
-            fontSize: 12,
-            fontWeight: '600',
-            color: isActive ? '#FFFFFF' : theme.textSecondary,
-          }}
-        >
+        <View style={{
+          width: 6, height: 6, borderRadius: 3,
+          backgroundColor: isActive ? '#FFFFFF' : item.color,
+        }} />
+        <Text style={{
+          fontSize: 12,
+          fontWeight: '600',
+          color: isActive ? '#FFFFFF' : theme.textSecondary,
+        }}>
           {item.label}
         </Text>
       </TouchableOpacity>
     );
-  }, [activeCategory, theme]);
+  }, [activeTag, theme]);
 
   const renderCard = useCallback(({ item }: { item: DecryptedCredential }) => {
     const displayValue =
@@ -250,7 +232,6 @@ export default function Dashboard() {
           ? '**** ' + item.data.cardNumber.slice(-4)
           : ''
         : item.data.username || '';
-    const categoryColor = getCategoryColor(item.category);
 
     return (
       <TouchableOpacity
@@ -289,20 +270,26 @@ export default function Dashboard() {
             {displayValue}
           </Text>
 
-          <View style={{ marginTop: 6 }}>
-            <View
-              style={{
-                paddingHorizontal: 8,
-                paddingVertical: 2,
-                borderRadius: 6,
-                backgroundColor: categoryColor.bg,
-                alignSelf: 'flex-start',
-              }}
-            >
-              <Text style={{ fontSize: 11, fontWeight: '600', color: categoryColor.text }}>
-                {item.category.charAt(0).toUpperCase() + item.category.slice(1)}
-              </Text>
-            </View>
+          <View style={{ marginTop: 6, flexDirection: 'row', flexWrap: 'wrap', gap: 4 }}>
+            {(item.tags ?? []).slice(0, 2).map((tagId) => {
+              const tag = tags.find((t) => t.id === tagId);
+              if (!tag) return null;
+              return (
+                <View
+                  key={tagId}
+                  style={{
+                    paddingHorizontal: 8,
+                    paddingVertical: 2,
+                    borderRadius: 6,
+                    backgroundColor: tag.color + '20',
+                  }}
+                >
+                  <Text style={{ fontSize: 11, fontWeight: '600', color: tag.color }}>
+                    {tag.label}
+                  </Text>
+                </View>
+              );
+            })}
           </View>
         </View>
 
@@ -325,16 +312,18 @@ export default function Dashboard() {
         </TouchableOpacity>
       </TouchableOpacity>
     );
-  }, [theme]);
+    // `tags` is required — the pills resolve tag IDs against it, so omitting it
+    // would freeze the closure on the initial empty array.
+  }, [theme, tags]);
 
   const renderListHeader = () => (
     <>
-      {/* Category Chips */}
+      {/* Tag Chips */}
       <FlatList
         horizontal
         showsHorizontalScrollIndicator={false}
-        data={CATEGORIES}
-        keyExtractor={(item) => item.key}
+        data={[{ id: 'all', label: 'All', color: '#4F6EF7' }, ...tags]}
+        keyExtractor={(item) => item.id}
         contentContainerStyle={{ paddingHorizontal: 20, paddingVertical: 10, gap: 8 }}
         renderItem={renderChip}
       />
@@ -553,7 +542,7 @@ export default function Dashboard() {
         data={filtered}
         keyExtractor={(item) => item.id}
         renderItem={renderCard}
-        ListHeaderComponent={filtered.length === 0 && !search.trim() && activeCategory === 'all' ? null : renderListHeader}
+        ListHeaderComponent={filtered.length === 0 && !search.trim() && activeTag === 'all' ? null : renderListHeader}
         ListEmptyComponent={
           <View style={{ alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32, paddingTop: 48 }}>
             <View style={{
@@ -564,7 +553,7 @@ export default function Dashboard() {
             }}>
               <Ionicons name="shield-outline" size={40} color="#4F6EF7" />
             </View>
-            {search.trim() || activeCategory !== 'all' ? (
+            {search.trim() || activeTag !== 'all' ? (
               <>
                 <Text style={{ fontSize: 18, fontWeight: '700', color: theme.textPrimary, textAlign: 'center' }}>
                   No Results Found

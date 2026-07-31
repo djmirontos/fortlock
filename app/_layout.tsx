@@ -6,6 +6,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useColorScheme } from 'react-native';
 import { useAuthStore } from '../stores/authStore';
 import { hasMasterPassword } from '../services/cryptoService';
+import { migrateCredentialTags } from '../services/dbService';
 import ErrorBoundary from '../components/ErrorBoundary';
 
 export default function RootLayout() {
@@ -17,6 +18,7 @@ export default function RootLayout() {
       await Promise.all([
         hasMasterPassword(),
         loadPersistedSettings(),
+        migrateCredentialTags(),
       ]);
       setLoading(false);
     };

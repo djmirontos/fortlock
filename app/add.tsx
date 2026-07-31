@@ -17,15 +17,9 @@ import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useTheme } from "../hooks/useTheme";
 import { useAuthStore } from "../stores/authStore";
-import { addCredential, getDecryptedCredentials } from "../services/dbService";
-import { CredentialData } from "../types";
-
-const CATEGORIES = [
-  { key: "general", label: "General" },
-  { key: "banking", label: "Banking" },
-  { key: "social", label: "Social" },
-  { key: "email", label: "Email" },
-];
+import { addCredential, getDecryptedCredentials, updateCredentialTags } from "../services/dbService";
+import { getTags } from "../services/tagService";
+import { CredentialData, Tag } from "../types";
 
 const generatePassword = () => {
   const uppercase = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
@@ -83,7 +77,8 @@ export default function AddCredential() {
     disabledBg: theme.surfaceSecondary,
     disabledText: theme.textSecondary,
   };
-  const [category, setCategory] = useState("general");
+  const [tags, setTags] = useState<Tag[]>([]);
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showToast, setShowToast] = useState(false);
@@ -106,7 +101,11 @@ export default function AddCredential() {
   const [serviceName, setServiceName] = useState("");
   const [username, setUsername] = useState("");
 
-  const isBanking = category === "banking";
+  const isBanking = selectedTags.includes('tag_banking');
+
+  useEffect(() => {
+    getTags().then(setTags).catch(() => {});
+  }, []);
 
   const isFormValid = () => {
     if (isBanking) {
@@ -158,7 +157,7 @@ export default function AddCredential() {
   };
 
   const clearForm = () => {
-    setCategory("general");
+    setSelectedTags([]);
     setPassword("");
     setNotes("");
     setBankName("");
@@ -182,7 +181,7 @@ export default function AddCredential() {
 
     setLoading(true);
     try {
-      const data: CredentialData = category === "banking" ? {
+      const data: CredentialData = isBanking ? {
         serviceName: bankName,
         cardHolder: cardHolder.trim(),
         cardNumber: cardNumber.replace(/\s/g, ""),
@@ -196,7 +195,14 @@ export default function AddCredential() {
         notes,
       };
 
-      await addCredential(data, category as any, masterKey);
+      // `category` is still persisted for backward compatibility; derive it
+      // from the selected tags.
+      const derivedCategory = selectedTags.includes('tag_banking') ? 'banking' :
+        selectedTags.includes('tag_social') ? 'social' :
+        selectedTags.includes('tag_email') ? 'email' : 'general';
+
+      const newCredential = await addCredential(data, derivedCategory as any, masterKey);
+      await updateCredentialTags(newCredential.id, selectedTags);
       const updated = await getDecryptedCredentials(masterKey);
       setDecryptedCredentials(updated);
       showSuccessToast();
@@ -290,42 +296,51 @@ export default function AddCredential() {
         </View>
       </View>
 
-      {/* Category Chips — outside ScrollView */}
-      <View style={{ backgroundColor: COLORS.card, paddingHorizontal: 20, paddingVertical: 12 }}>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ flexDirection: "row", gap: 8 }}
-        >
-          {CATEGORIES.map((cat) => {
-            const active = category === cat.key;
-            return (
-              <TouchableOpacity
-                key={cat.key}
-                onPress={() => setCategory(cat.key)}
-                activeOpacity={0.8}
-                style={{
-                  height: 34,
-                  paddingHorizontal: 14,
-                  borderRadius: 17,
-                  justifyContent: "center",
-                  backgroundColor: active ? COLORS.accent : COLORS.background,
-                }}
-              >
-                <Text
-                  style={{
-                    fontSize: 13,
-                    fontWeight: active ? "600" : "500",
-                    color: active ? theme.surface : COLORS.textSecondary,
-                  }}
-                >
-                  {cat.label}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
-      </View>
+      {/* Tag multi-select — outside ScrollView */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{ paddingHorizontal: 20, paddingVertical: 12, gap: 8, flexDirection: 'row' }}
+        style={{ backgroundColor: theme.surface }}
+      >
+        {tags.map((tag) => {
+          const isSelected = selectedTags.includes(tag.id);
+          return (
+            <TouchableOpacity
+              key={tag.id}
+              style={{
+                height: 34,
+                paddingHorizontal: 14,
+                borderRadius: 17,
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 6,
+                backgroundColor: isSelected ? tag.color : theme.surfaceSecondary,
+              }}
+              onPress={() => {
+                setSelectedTags((prev) =>
+                  prev.includes(tag.id)
+                    ? prev.filter((id) => id !== tag.id)
+                    : [...prev, tag.id]
+                );
+              }}
+              activeOpacity={0.7}
+            >
+              <View style={{
+                width: 6, height: 6, borderRadius: 3,
+                backgroundColor: isSelected ? '#FFFFFF' : tag.color,
+              }} />
+              <Text style={{
+                fontSize: 13,
+                fontWeight: '600',
+                color: isSelected ? '#FFFFFF' : theme.textSecondary,
+              }}>
+                {tag.label}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
 
       {/* Content — INSIDE KeyboardAvoidingView + ScrollView */}
       <KeyboardAvoidingView

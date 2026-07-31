@@ -10,6 +10,7 @@ import {
   DecryptedCredential,
   CredentialCategory,
 } from '../types';
+import { CATEGORY_TO_TAG_ID } from './tagService';
 import { CREDENTIALS_KEY, TOTP_KEY } from '../constants/storageKeys';
 
 // Generate unique ID
@@ -61,9 +62,11 @@ export const addCredential = async (
   const id = await generateId();
   const now = Date.now();
 
+  const defaultTag = CATEGORY_TO_TAG_ID[category] || 'tag_general';
   const newCredential: Credential = {
     id,
     category,
+    tags: [defaultTag],
     createdAt: now,
     updatedAt: now,
     isFavorite: false,
@@ -133,4 +136,35 @@ export const toggleFavorite = async (id: string): Promise<void> => {
     c.id === id ? { ...c, isFavorite: !c.isFavorite } : c
   );
   await AsyncStorage.setItem(CREDENTIALS_KEY, JSON.stringify(updated));
+};
+
+// Replace the tag set on a single credential
+export const updateCredentialTags = async (
+  id: string,
+  tags: string[]
+): Promise<void> => {
+  const all = await getRawCredentials();
+  const updated = all.map((c) =>
+    c.id === id ? { ...c, tags, updatedAt: Date.now() } : c
+  );
+  await AsyncStorage.setItem(CREDENTIALS_KEY, JSON.stringify(updated));
+};
+
+// Backfill `tags` on credentials saved before tags existed, deriving the
+// initial tag from the legacy category. Idempotent — no write if nothing needs it.
+export const migrateCredentialTags = async (): Promise<void> => {
+  try {
+    const all = await getRawCredentials();
+    const needsMigration = all.some((c) => !c.tags || !Array.isArray(c.tags));
+    if (!needsMigration) return;
+    const migrated = all.map((c) => ({
+      ...c,
+      tags: c.tags && Array.isArray(c.tags)
+        ? c.tags
+        : [CATEGORY_TO_TAG_ID[c.category] || 'tag_general'],
+    }));
+    await AsyncStorage.setItem(CREDENTIALS_KEY, JSON.stringify(migrated));
+  } catch {
+    // silent — migration is best-effort
+  }
 };
