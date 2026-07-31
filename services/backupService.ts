@@ -4,8 +4,8 @@ import * as Sharing from "expo-sharing";
 import * as DocumentPicker from "expo-document-picker";
 import { Credential } from "../types";
 import { decryptCredentialData } from "./cryptoService";
+import { CREDENTIALS_KEY } from "../constants/storageKeys";
 
-const CREDENTIALS_KEY = "fortlock_credentials";
 const BACKUP_VERSION = "1.0";
 
 interface BackupFile {

@@ -21,7 +21,7 @@ export default function Authenticator() {
   const insets = useSafeAreaInsets();
   const theme = useTheme();
   const { masterKey } = useAuthStore();
-  const isDark = theme.background !== '#F2F2F7';
+  const isDark = theme.isDark;
 
   const [entries, setEntries] = useState<TotpEntryDecrypted[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -218,7 +218,7 @@ export default function Authenticator() {
         {/* Settings */}
         <TouchableOpacity
           style={{ flex: 1, alignItems: 'center', gap: 3 }}
-          onPress={() => router.push('/settings')}
+          onPress={() => router.replace('/settings')}
           activeOpacity={0.7}
         >
           <Ionicons name="settings-outline" size={24} color={theme.textSecondary} />

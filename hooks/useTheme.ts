@@ -6,17 +6,10 @@ export const useTheme = (): Theme => {
   const systemScheme = useColorScheme();
   const themeMode = useAuthStore((state) => state.themeMode);
 
-  // User explicitly chose light
-  if (themeMode === 'light') return LightTheme;
-  
-  // User explicitly chose dark
-  if (themeMode === 'dark') return DarkTheme;
+  // Derived once here so screens never have to infer dark mode by comparing
+  // hex strings (which silently breaks if a palette colour changes).
+  const isDark =
+    themeMode === 'dark' || (themeMode === 'system' && systemScheme === 'dark');
 
-  // System mode - follow system preference
-  if (themeMode === 'system') {
-    return systemScheme === 'dark' ? DarkTheme : LightTheme;
-  }
-
-  // Default is ALWAYS light until user changes it in settings
-  return LightTheme;
+  return { ...(isDark ? DarkTheme : LightTheme), isDark };
 };

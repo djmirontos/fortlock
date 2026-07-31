@@ -31,7 +31,24 @@
     },
     "plugins": [
       "expo-router",
-      "expo-secure-store"
+      [
+        "expo-secure-store",
+        {
+          "faceIDPermission": "FortLock uses Face ID to unlock your vault."
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "FortLock uses the camera to scan 2FA QR codes and send passwords to desktop."
+        }
+      ],
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "FortLock uses Face ID to unlock your vault."
+        }
+      ]
     ],
     "extra": {
       "router": {},

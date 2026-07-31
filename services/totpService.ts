@@ -3,8 +3,7 @@ import { generateSync } from 'otplib';
 import { encryptField, decryptField } from './cryptoService';
 import { TotpEntry, TotpEntryDecrypted } from '../types';
 import * as ExpoRandom from 'expo-crypto';
-
-const TOTP_KEY = 'fortlock_totp_entries';
+import { TOTP_KEY } from '../constants/storageKeys';
 
 const generateId = async (): Promise<string> => {
   const random = await ExpoRandom.getRandomBytesAsync(8);

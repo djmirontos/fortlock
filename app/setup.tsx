@@ -12,13 +12,16 @@ import {
   ActivityIndicator,
   Modal,
   Animated,
+  StatusBar,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as SecureStore from 'expo-secure-store';
 import FortLockLogo from '../assets/logo.svg';
 import { setupMasterPassword } from '../services/cryptoService';
 import { useAuthStore } from '../stores/authStore';
+import { BIOMETRIC_KEY, BIOMETRIC_ENABLED_KEY } from '../constants/storageKeys';
 
 interface PasswordRule {
   label: string;
@@ -30,7 +33,7 @@ const PASSWORD_RULES: PasswordRule[] = [
   { label: 'Uppercase (A-Z)', test: (p) => /[A-Z]/.test(p) },
   { label: 'Lowercase (a-z)', test: (p) => /[a-z]/.test(p) },
   { label: 'Number (0-9)', test: (p) => /[0-9]/.test(p) },
-  { label: 'Symbol (!@#$%)', test: (p) => /[!@#\$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(p) },
+  { label: 'Symbol (!@#$%)', test: (p: string) => /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(p) },
   { label: 'No spaces', test: (p) => p.length > 0 && !/\s/.test(p) },
 ];
 
@@ -56,6 +59,7 @@ const COLORS = {
 };
 
 export default function SetupScreen() {
+  const insets = useSafeAreaInsets();
   const { setMasterKey, setDecryptedCredentials, setAuthenticated } = useAuthStore();
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -110,11 +114,22 @@ export default function SetupScreen() {
     setIsLoading(true);
     try {
       const masterKey = await setupMasterPassword(password);
-      await SecureStore.setItemAsync(
-        'fortlock_biometric_key',
-        masterKey.toString('base64'),
-        { requireAuthentication: true, authenticationPrompt: 'Authenticate to save biometric access' }
-      );
+
+      // Storing the key for biometric unlock is a convenience, not a
+      // requirement. On devices with no secure lock screen or no enrolled
+      // biometric, requireAuthentication makes this throw — that must not
+      // prevent the user from creating a vault at all.
+      try {
+        await SecureStore.setItemAsync(
+          BIOMETRIC_KEY,
+          masterKey.toString('base64'),
+          { requireAuthentication: true, authenticationPrompt: 'Authenticate to save biometric access' }
+        );
+        await SecureStore.setItemAsync(BIOMETRIC_ENABLED_KEY, 'true');
+      } catch {
+        // Biometric unlock unavailable — vault still works with the password
+      }
+
       setMasterKey(masterKey);
       setDecryptedCredentials([]);
       setAuthenticated(true);
@@ -128,7 +143,12 @@ export default function SetupScreen() {
 
   return (
     <KeyboardAvoidingView style={[styles.container, { backgroundColor: COLORS.background }]} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+      <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} translucent={false} />
+      <ScrollView
+        contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 24 }]}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
         {/* Header Section */}
         <View style={styles.headerSection}>
           <View style={styles.logoContainer}>
@@ -349,7 +369,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: 24,
-    paddingTop: 48,
+    // paddingTop is applied inline from safe-area insets
     paddingBottom: 40,
   },
   headerSection: {

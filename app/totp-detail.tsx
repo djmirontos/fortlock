@@ -21,7 +21,7 @@ export default function TotpDetail() {
   const theme = useTheme();
   const { masterKey } = useAuthStore();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const isDark = theme.background !== '#F2F2F7';
+  const isDark = theme.isDark;
 
   const [entry, setEntry] = useState<TotpEntryDecrypted | null>(null);
   const [isLoading, setIsLoading] = useState(true);

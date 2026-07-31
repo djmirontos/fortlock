@@ -1,9 +1,7 @@
 ﻿import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AuthState, ThemeMode, DecryptedCredential } from '../types';
-
-const THEME_KEY = 'fortlock_theme_mode';
-const AUTO_LOCK_KEY = 'fortlock_auto_lock_timer';
+import { THEME_KEY, AUTO_LOCK_KEY } from '../constants/storageKeys';
 
 interface AuthStore extends AuthState {
   // Security state (in-memory only, never persisted)

@@ -31,7 +31,9 @@ export const DarkTheme = {
   toggleTrack: '#3A3A3C',
 };
 
-export type Theme = typeof LightTheme;
+// `isDark` is supplied by useTheme() rather than living on the palettes
+// themselves, so screens can branch on it directly.
+export type Theme = typeof LightTheme & { isDark: boolean };
 
 export const Spacing = {
   xs: 4,

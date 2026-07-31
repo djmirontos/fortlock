@@ -25,7 +25,7 @@ export default function AddTotp() {
   const insets = useSafeAreaInsets();
   const theme = useTheme();
   const { masterKey } = useAuthStore();
-  const isDark = theme.background !== '#F2F2F7';
+  const isDark = theme.isDark;
 
   const [mode, setMode] = useState<AddMode>('scan');
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);

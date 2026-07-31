@@ -1,3 +1,4 @@
+import { Buffer } from 'buffer';
 import { useState, useEffect } from 'react';
 import {
   View,
@@ -21,6 +22,7 @@ import { useTheme } from '../hooks/useTheme';
 import { verifyAndGetMasterKey, hasMasterPassword } from '../services/cryptoService';
 import { getDecryptedCredentials } from '../services/dbService';
 import { FontSize, Spacing, Radius } from '../constants/theme';
+import { BIOMETRIC_KEY } from '../constants/storageKeys';
 
 export default function LoginScreen() {
   const theme = useTheme();
@@ -74,12 +76,11 @@ export default function LoginScreen() {
   const handleBiometric = async () => {
     try {
       const keyBase64 = await SecureStore.getItemAsync(
-        'fortlock_biometric_key',
+        BIOMETRIC_KEY,
         { requireAuthentication: true, authenticationPrompt: 'Unlock FortLock' }
       );
       if (keyBase64) {
-        const { Buffer: BufferClass } = require('buffer');
-        const masterKey = BufferClass.from(keyBase64, 'base64');
+        const masterKey = Buffer.from(keyBase64, 'base64');
         const decrypted = await getDecryptedCredentials(masterKey);
         setMasterKey(masterKey);
         setDecryptedCredentials(decrypted);

@@ -21,14 +21,15 @@ import { clearAllCredentials, getRawCredentials, getDecryptedCredentials } from 
 import { clearAllSecureData, changeMasterPassword } from "../services/cryptoService";
 import { exportFlbx, exportCsv, exportXml, importFlbx } from "../services/backupService";
 import * as LocalAuthentication from "expo-local-authentication";
-import { LightTheme } from "../constants/theme";
+import * as SecureStore from "expo-secure-store";
+import { BIOMETRIC_KEY, BIOMETRIC_ENABLED_KEY } from "../constants/storageKeys";
 
 const PASSWORD_RULES = [
   { label: "8+ characters", test: (p: string) => p.length >= 8 },
   { label: "Uppercase (A-Z)", test: (p: string) => /[A-Z]/.test(p) },
   { label: "Lowercase (a-z)", test: (p: string) => /[a-z]/.test(p) },
   { label: "Number (0-9)", test: (p: string) => /[0-9]/.test(p) },
-  { label: "Symbol (!@#$%)", test: (p: string) => /[!@#$%^&*]/.test(p) },
+  { label: "Symbol (!@#$%)", test: (p: string) => /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(p) },
   { label: "No spaces", test: (p: string) => p.length > 0 && !/\s/.test(p) },
 ];
 
@@ -39,6 +40,7 @@ export default function Settings() {
 
   const [biometricAvailable, setBiometricAvailable] = useState(false);
   const [biometricEnabled, setBiometricEnabled] = useState(false);
+  const [togglingBiometric, setTogglingBiometric] = useState(false);
   const [showChangePassword, setShowChangePassword] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -63,17 +65,64 @@ export default function Settings() {
   useEffect(() => {
     const checkBiometric = async () => {
       try {
-        const available = await LocalAuthentication.hasHardwareAsync();
-        setBiometricAvailable(available);
-      } catch (error) {
-        console.log("Biometric check error:", error);
+        // Hardware alone is not enough — storing with requireAuthentication
+        // fails if nothing is actually enrolled.
+        const [hasHardware, isEnrolled, pref] = await Promise.all([
+          LocalAuthentication.hasHardwareAsync(),
+          LocalAuthentication.isEnrolledAsync(),
+          SecureStore.getItemAsync(BIOMETRIC_ENABLED_KEY),
+        ]);
+        setBiometricAvailable(hasHardware && isEnrolled);
+        setBiometricEnabled(pref === "true");
+      } catch {
+        setBiometricAvailable(false);
+        setBiometricEnabled(false);
       }
     };
     checkBiometric();
   }, []);
 
   const toggleBiometric = async (value: boolean) => {
-    setBiometricEnabled(value);
+    if (togglingBiometric) return;
+    setTogglingBiometric(true);
+    try {
+      if (value) {
+        if (!masterKey) {
+          Alert.alert("Session Expired", "Please unlock again before enabling biometric unlock.");
+          return;
+        }
+        await SecureStore.setItemAsync(
+          BIOMETRIC_KEY,
+          masterKey.toString("base64"),
+          {
+            requireAuthentication: true,
+            authenticationPrompt: "Authenticate to enable biometric unlock",
+          }
+        );
+        await SecureStore.setItemAsync(BIOMETRIC_ENABLED_KEY, "true");
+        setBiometricEnabled(true);
+      } else {
+        await SecureStore.deleteItemAsync(BIOMETRIC_KEY);
+        await SecureStore.deleteItemAsync(BIOMETRIC_ENABLED_KEY);
+        setBiometricEnabled(false);
+      }
+    } catch {
+      Alert.alert(
+        "Biometric Unlock",
+        value
+          ? "Could not enable biometric unlock. Make sure a screen lock or biometric is set up on your device."
+          : "Could not disable biometric unlock. Please try again."
+      );
+      // Re-sync the switch with what is actually persisted
+      try {
+        const pref = await SecureStore.getItemAsync(BIOMETRIC_ENABLED_KEY);
+        setBiometricEnabled(pref === "true");
+      } catch {
+        setBiometricEnabled(false);
+      }
+    } finally {
+      setTogglingBiometric(false);
+    }
   };
 
   const ruleResults = PASSWORD_RULES.map((rule) => ({
@@ -183,23 +232,36 @@ export default function Settings() {
   };
 
   const handleImport = async () => {
-    setIsImporting(true);
-    try {
-      const count = await importFlbx();
-      if (count === 0) {
-        Alert.alert("Nothing Imported", "No valid credentials found in the backup file.");
-      } else {
-        if (masterKey) {
-          const updated = await getDecryptedCredentials(masterKey);
-          setDecryptedCredentials(updated);
-        }
-        Alert.alert("Vault Restored! 🎉", `${count} credential${count !== 1 ? "s" : ""} loaded from backup.`);
-      }
-    } catch (error: any) {
-      Alert.alert("Import Failed", error.message || "Could not read backup file. Make sure it's a valid .flbx file.");
-    } finally {
-      setIsImporting(false);
-    }
+    Alert.alert(
+      '⚠️ Replace Vault?',
+      'This will permanently replace your current vault with the backup file. This action cannot be undone. Make sure you have exported your current vault first.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Replace Vault',
+          style: 'destructive',
+          onPress: async () => {
+            setIsImporting(true);
+            try {
+              const count = await importFlbx();
+              if (count === 0) {
+                Alert.alert('Nothing Imported', 'No valid credentials found in the backup file.');
+              } else {
+                if (masterKey) {
+                  const updated = await getDecryptedCredentials(masterKey);
+                  setDecryptedCredentials(updated);
+                }
+                Alert.alert('Vault Restored! 🎉', `${count} credential${count !== 1 ? 's' : ''} loaded from backup.`);
+              }
+            } catch (error: any) {
+              Alert.alert('Import Failed', error.message || 'Could not read backup file. Make sure it is a valid .flbx file.');
+            } finally {
+              setIsImporting(false);
+            }
+          },
+        },
+      ]
+    );
   };
 
   const handleAutoLockTimerAlert = () => {
@@ -247,7 +309,7 @@ export default function Settings() {
   return (
     <View style={[styles.container, { flex: 1, backgroundColor: theme.background }]}>
       <StatusBar
-        barStyle={theme.background === '#F2F2F7' ? "dark-content" : "light-content"}
+        barStyle={theme.isDark ? "light-content" : "dark-content"}
         backgroundColor={theme.surface}
         translucent={false}
       />
@@ -289,6 +351,7 @@ export default function Settings() {
               <Switch
                 value={biometricEnabled}
                 onValueChange={toggleBiometric}
+                disabled={togglingBiometric}
                 trackColor={{ false: theme.stroke, true: theme.primary }}
                 thumbColor="#FFFFFF"
               />

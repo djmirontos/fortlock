@@ -10,8 +10,7 @@ import {
   DecryptedCredential,
   CredentialCategory,
 } from '../types';
-
-const CREDENTIALS_KEY = 'fortlock_credentials';
+import { CREDENTIALS_KEY, TOTP_KEY } from '../constants/storageKeys';
 
 // Generate unique ID
 const generateId = async (): Promise<string> => {
@@ -119,9 +118,12 @@ export const searchDecryptedCredentials = (
   );
 };
 
-// Clear all credentials
+// Clear all credentials AND TOTP entries.
+// TOTP entries are encrypted with the same master key, so leaving them behind
+// both retains 2FA seeds the user asked to erase and guarantees they are
+// undecryptable garbage once a new master password is set.
 export const clearAllCredentials = async (): Promise<void> => {
-  await AsyncStorage.removeItem(CREDENTIALS_KEY);
+  await AsyncStorage.multiRemove([CREDENTIALS_KEY, TOTP_KEY]);
 };
 
 // Toggle favorite status

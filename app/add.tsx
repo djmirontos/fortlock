@@ -242,7 +242,7 @@ export default function AddCredential() {
     return (
       <View style={{ flex: 1, backgroundColor: theme.background }}>
         <StatusBar
-          barStyle={theme.background === '#F2F2F7' ? "dark-content" : "light-content"}
+          barStyle={theme.isDark ? "light-content" : "dark-content"}
           backgroundColor={theme.surface}
           translucent={false}
         />

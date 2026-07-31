@@ -4,9 +4,15 @@ import * as SecureStore from 'expo-secure-store';
 import * as ExpoRandom from 'expo-crypto';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { CredentialData } from '../types';
+import {
+  CREDENTIALS_KEY,
+  TOTP_KEY,
+  MASTER_HASH_KEY,
+  SALT_KEY,
+  BIOMETRIC_KEY,
+  BIOMETRIC_ENABLED_KEY,
+} from '../constants/storageKeys';
 
-const MASTER_HASH_KEY = 'fortlock_master_hash';
-const SALT_KEY = 'fortlock_salt';
 const PBKDF2_ITERATIONS = 310000;  // OWASP 2023 recommendation
 const KEY_LENGTH = 32;  // 256 bits
 const IV_LENGTH = 12;   // 96 bits for GCM
@@ -45,11 +51,10 @@ export const encryptField = (
   const authTag = cipher.getAuthTag();
 
   // Combine IV + AuthTag + Ciphertext as base64
-  const { Buffer: BufferClass } = require('buffer');
-  const combined = BufferClass.concat([
+  const combined = Buffer.concat([
     iv,
     authTag,
-    BufferClass.from(encrypted, 'base64'),
+    Buffer.from(encrypted, 'base64'),
   ]);
 
   return combined.toString('base64');
@@ -60,8 +65,7 @@ export const decryptField = (
   encryptedBase64: string,
   masterKey: any
 ): string => {
-  const { Buffer: BufferClass } = require('buffer');
-  const combined = BufferClass.from(encryptedBase64, 'base64');
+  const combined = Buffer.from(encryptedBase64, 'base64');
 
   const iv = combined.slice(0, IV_LENGTH);
   const authTag = combined.slice(IV_LENGTH, IV_LENGTH + AUTH_TAG_LENGTH);
@@ -100,8 +104,7 @@ export const setupMasterPassword = async (
 ): Promise<any> => {
   // Generate random salt
   const saltBytes = await ExpoRandom.getRandomBytesAsync(32);
-  const { Buffer: BufferClass } = require('buffer');
-  const salt = BufferClass.from(saltBytes);
+  const salt = Buffer.from(saltBytes);
 
   // Derive master key
   const masterKey = await deriveMasterKey(password, salt);
@@ -129,8 +132,7 @@ export const verifyAndGetMasterKey = async (
 
     if (!saltBase64 || !storedHash) return null;
 
-    const { Buffer: BufferClass } = require('buffer');
-    const salt = BufferClass.from(saltBase64, 'base64');
+    const salt = Buffer.from(saltBase64, 'base64');
     const masterKey = await deriveMasterKey(password, salt);
 
     const verificationHash = QuickCrypto
@@ -156,7 +158,13 @@ export const hasMasterPassword = async (): Promise<boolean> => {
   }
 };
 
-// Change master password - re-encrypt all credentials
+// Change master password — re-encrypts BOTH credentials and TOTP entries.
+//
+// Ordering is critical for crash safety: nothing that the old password can no
+// longer read is committed until every re-encryption has succeeded. The new
+// salt/hash are written LAST, so if any earlier step fails the old password
+// still opens the vault. If a late step fails, the catch block restores all
+// four values from the pre-change snapshot.
 export const changeMasterPassword = async (
   currentPassword: string,
   newPassword: string,
@@ -167,34 +175,107 @@ export const changeMasterPassword = async (
   const currentKey = await verifyAndGetMasterKey(currentPassword);
   if (!currentKey) return { success: false, newMasterKey: null };
 
-  // Generate new master key
-  const newKey = await setupMasterPassword(newPassword);
 
-  // Re-encrypt all credentials with new key
-  const reEncrypted: any[] = [];
-  for (let index = 0; index < credentials.length; index++) {
-    const cred = credentials[index];
-    const data = decryptCredentialData(cred.encryptedData, currentKey);
-    const newEncryptedData = encryptCredentialData(data, newKey);
-    reEncrypted.push({ ...cred, encryptedData: newEncryptedData });
-    onProgress?.(index + 1, credentials.length);
-    // Yield to JS thread every 5 credentials so UI can update
-    if (index % 5 === 0) {
-      await new Promise((resolve) => setTimeout(resolve, 0));
+  // Snapshot everything we are about to touch, for rollback
+  const prevSalt = await SecureStore.getItemAsync(SALT_KEY);
+  const prevHash = await SecureStore.getItemAsync(MASTER_HASH_KEY);
+  const prevCredentialsJson = await AsyncStorage.getItem(CREDENTIALS_KEY);
+  const prevTotpJson = await AsyncStorage.getItem(TOTP_KEY);
+
+  try {
+    // 1. Derive the new key WITHOUT persisting salt/hash yet
+    const saltBytes = await ExpoRandom.getRandomBytesAsync(32);
+    const newSalt = Buffer.from(saltBytes);
+    const newKey = await deriveMasterKey(newPassword, newSalt);
+    const newHash = QuickCrypto
+      .createHash('sha256')
+      .update(newKey)
+      .digest('base64');
+
+    // Load TOTP entries so they are migrated alongside the credentials.
+    // Without this, every 2FA secret becomes permanently undecryptable.
+    let rawTotp: any[] = [];
+    if (prevTotpJson) {
+      try {
+        const parsed = JSON.parse(prevTotpJson);
+        if (Array.isArray(parsed)) rawTotp = parsed;
+      } catch {
+        rawTotp = [];
+      }
     }
+
+    const total = credentials.length + rawTotp.length;
+    let done = 0;
+
+    const yieldToUi = async () => {
+      done++;
+      onProgress?.(done, total);
+      // Yield periodically so the progress bar can actually paint
+      if (done % 5 === 0) {
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      }
+    };
+
+    // 2a. Re-encrypt credentials into memory
+    const reEncryptedCredentials: any[] = [];
+    for (const cred of credentials) {
+      const data = decryptCredentialData(cred.encryptedData, currentKey);
+      reEncryptedCredentials.push({
+        ...cred,
+        encryptedData: encryptCredentialData(data, newKey),
+      });
+      await yieldToUi();
+    }
+
+    // 2b. Re-encrypt TOTP entries into memory
+    const reEncryptedTotp: any[] = [];
+    for (const entry of rawTotp) {
+      const secret = decryptField(entry.encryptedSecret, currentKey);
+      reEncryptedTotp.push({
+        ...entry,
+        encryptedSecret: encryptField(secret, newKey),
+      });
+      await yieldToUi();
+    }
+
+    // 3. Commit both data stores in a single native call to minimise the
+    //    window in which the two could disagree
+    await AsyncStorage.multiSet([
+      [CREDENTIALS_KEY, JSON.stringify(reEncryptedCredentials)],
+      [TOTP_KEY, JSON.stringify(reEncryptedTotp)],
+    ]);
+
+    // 4. Only now commit the new salt + verification hash
+    await SecureStore.setItemAsync(SALT_KEY, newSalt.toString('base64'));
+    await SecureStore.setItemAsync(MASTER_HASH_KEY, newHash);
+
+    return { success: true, newMasterKey: newKey };
+  } catch (error) {
+    // Roll everything back to the pre-change state so the old password keeps working
+    try {
+      if (prevSalt !== null) await SecureStore.setItemAsync(SALT_KEY, prevSalt);
+      if (prevHash !== null) await SecureStore.setItemAsync(MASTER_HASH_KEY, prevHash);
+
+      if (prevCredentialsJson !== null) {
+        await AsyncStorage.setItem(CREDENTIALS_KEY, prevCredentialsJson);
+      }
+      if (prevTotpJson !== null) {
+        await AsyncStorage.setItem(TOTP_KEY, prevTotpJson);
+      } else {
+        await AsyncStorage.removeItem(TOTP_KEY);
+      }
+    } catch {
+      // Rollback itself failed — nothing further we can safely do here
+    }
+    return { success: false, newMasterKey: null };
   }
-
-  // Save re-encrypted credentials
-  await AsyncStorage.setItem(
-    'fortlock_credentials',
-    JSON.stringify(reEncrypted)
-  );
-
-  return { success: true, newMasterKey: newKey };
 };
 
 // Clear all secure data
 export const clearAllSecureData = async (): Promise<void> => {
   await SecureStore.deleteItemAsync(MASTER_HASH_KEY);
   await SecureStore.deleteItemAsync(SALT_KEY);
+  // The biometric key holds the raw master key — it must not survive a reset
+  await SecureStore.deleteItemAsync(BIOMETRIC_KEY);
+  await SecureStore.deleteItemAsync(BIOMETRIC_ENABLED_KEY);
 };

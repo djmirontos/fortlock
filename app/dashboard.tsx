@@ -14,10 +14,9 @@ import {
   Easing,
   Image,
   ActivityIndicator,
-  useColorScheme,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { router, useFocusEffect } from 'expo-router';
+import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../stores/authStore';
 import { useTheme } from '../hooks/useTheme';
@@ -47,13 +46,14 @@ const BRAND_colors = {
   generalText: '#7C3AED',
 };
 
+// `as const` keeps `icon` as literal types so it satisfies Ionicons' name union
 const CATEGORIES = [
   { key: 'all', label: 'All', icon: 'apps' },
   { key: 'banking', label: 'Banking', icon: 'card-outline' },
   { key: 'social', label: 'Social', icon: 'people-outline' },
   { key: 'email', label: 'Email', icon: 'mail-outline' },
   { key: 'general', label: 'General', icon: 'grid-outline' },
-];
+] as const;
 
 const formatDate = (timestamp: number): string => {
   const date = new Date(timestamp);
@@ -74,22 +74,22 @@ const getTimeAgo = (timestamp: number): string => {
 
 export default function Dashboard() {
   const insets = useSafeAreaInsets();
-  const colorScheme = useColorScheme();
-  const { themeMode } = useAuthStore();
   const theme = useTheme();
   const { masterKey, setDecryptedCredentials, logout } = useAuthStore();
-  const [credentials, setCredentials] = useState<DecryptedCredential[]>([]);
+  // Read straight from the in-memory store. It is populated at login and kept
+  // current by every mutation path (add/edit/detail/settings), so the vault
+  // does not need re-decrypting on each focus.
+  const credentials = useAuthStore((s) => s.decryptedCredentials);
   const [search, setSearch] = useState('');
   const [activeCategory, setActiveCategory] = useState('all');
   const [sortBy, setSortBy] = useState('recent');
   const [selectedCredential, setSelectedCredential] = useState<DecryptedCredential | null>(null);
   const [showModal, setShowModal] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [showFavoritesModal, setShowFavoritesModal] = useState(false);
 
-  // Theme-aware colors
-  const isDark = themeMode === 'dark' || (themeMode === 'system' && colorScheme === 'dark');
+  const isDark = theme.isDark;
 
   const getCategoryColor = (category: string) => {
     switch (category) {
@@ -148,23 +148,25 @@ export default function Dashboard() {
     }
   }, [showModal, modalAnimation]);
 
-  useFocusEffect(
-    useCallback(() => {
-      if (masterKey) {
-        setIsLoading(true);
-        getDecryptedCredentials(masterKey)
-          .then((creds) => {
-            setDecryptedCredentials(creds);
-            setCredentials(creds);
-          })
-          .catch((err) => {
-            console.error('Failed to load credentials:', err);
-            Alert.alert('Error', 'Failed to load credentials. Please try logging in again.');
-          })
-          .finally(() => setIsLoading(false));
-      }
-    }, [masterKey])
-  );
+  // One-shot safety net: only decrypts if the store is somehow empty on mount
+  // (normal flow has it already populated by the login screen). Deliberately
+  // NOT a focus effect — re-decrypting the whole vault on every focus blocked
+  // the JS thread and janked every return transition.
+  const didInitialLoad = useRef(false);
+  useEffect(() => {
+    if (didInitialLoad.current) return;
+    didInitialLoad.current = true;
+    if (!masterKey || credentials.length > 0) return;
+
+    setIsLoading(true);
+    getDecryptedCredentials(masterKey)
+      .then((creds) => setDecryptedCredentials(creds))
+      .catch((err) => {
+        console.error('Failed to load credentials:', err);
+        Alert.alert('Error', 'Failed to load credentials. Please try logging in again.');
+      })
+      .finally(() => setIsLoading(false));
+  }, [masterKey]);
 
   const filtered = useMemo(() => {
     let result = [...credentials];
@@ -207,7 +209,7 @@ export default function Dashboard() {
     router.push('/add');
   };
 
-  const renderChip = useCallback(({ item }) => {
+  const renderChip = useCallback(({ item }: { item: typeof CATEGORIES[number] }) => {
     const isActive = activeCategory === item.key;
     return (
       <TouchableOpacity
@@ -604,7 +606,7 @@ export default function Dashboard() {
         {/* Settings Tab */}
         <TouchableOpacity
           style={{ flex: 1, alignItems: 'center', gap: 3 }}
-          onPress={() => router.push('/settings')}
+          onPress={() => router.replace('/settings')}
           activeOpacity={0.7}
         >
           <Ionicons name="settings-outline" size={24} color={theme.textSecondary} />
@@ -863,7 +865,6 @@ export default function Dashboard() {
                 if (masterKey) {
                   const updated = await getDecryptedCredentials(masterKey);
                   setDecryptedCredentials(updated);
-                  setCredentials(updated);
                 }
                 closeModal();
               }}
@@ -913,7 +914,6 @@ export default function Dashboard() {
                             if (masterKey) {
                               const updated = await getDecryptedCredentials(masterKey);
                               setDecryptedCredentials(updated);
-                              setCredentials(updated);
                             }
                           }
                         },
