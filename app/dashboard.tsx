@@ -553,7 +553,38 @@ export default function Dashboard() {
         data={filtered}
         keyExtractor={(item) => item.id}
         renderItem={renderCard}
-        ListHeaderComponent={renderListHeader}
+        ListHeaderComponent={filtered.length === 0 && !search.trim() && activeCategory === 'all' ? null : renderListHeader}
+        ListEmptyComponent={
+          <View style={{ alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32, paddingTop: 48 }}>
+            <View style={{
+              width: 80, height: 80, borderRadius: 24,
+              backgroundColor: '#EFF6FF',
+              alignItems: 'center', justifyContent: 'center',
+              marginBottom: 16,
+            }}>
+              <Ionicons name="shield-outline" size={40} color="#4F6EF7" />
+            </View>
+            {search.trim() || activeCategory !== 'all' ? (
+              <>
+                <Text style={{ fontSize: 18, fontWeight: '700', color: theme.textPrimary, textAlign: 'center' }}>
+                  No Results Found
+                </Text>
+                <Text style={{ fontSize: 14, color: theme.textSecondary, textAlign: 'center', marginTop: 8, lineHeight: 20 }}>
+                  Try a different search term or category filter.
+                </Text>
+              </>
+            ) : (
+              <>
+                <Text style={{ fontSize: 18, fontWeight: '700', color: theme.textPrimary, textAlign: 'center' }}>
+                  Your Vault is Empty
+                </Text>
+                <Text style={{ fontSize: 14, color: theme.textSecondary, textAlign: 'center', marginTop: 8, lineHeight: 20 }}>
+                  Tap the + button to add your first credential and start securing your passwords.
+                </Text>
+              </>
+            )}
+          </View>
+        }
         contentContainerStyle={{ paddingBottom: 90 + insets.bottom }}
         showsVerticalScrollIndicator={false}
         removeClippedSubviews={true}
