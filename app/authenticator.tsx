@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -51,25 +51,26 @@ export default function Authenticator() {
     }, [masterKey])
   );
 
-  // Tick every second — refresh codes when 30s window resets
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const secs = getRemainingSeconds();
-      setRemainingSeconds(secs);
+  // Tick every second — starts/stops with screen focus
+  useFocusEffect(
+    useCallback(() => {
+      const interval = setInterval(() => {
+        const secs = getRemainingSeconds();
+        setRemainingSeconds(secs);
 
-      // Regenerate codes at the start of each new 30s window
-      if (secs === 30) {
-        setCodes((prev) => {
-          const updated = { ...prev };
-          entries.forEach((e) => {
-            updated[e.id] = generateTotpCode(e.secret);
+        if (secs === 30) {
+          setCodes((prev) => {
+            const updated = { ...prev };
+            entries.forEach((e) => {
+              updated[e.id] = generateTotpCode(e.secret);
+            });
+            return updated;
           });
-          return updated;
-        });
-      }
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [entries]);
+        }
+      }, 1000);
+      return () => clearInterval(interval);
+    }, [entries])
+  );
 
   const handleCopy = async (code: string, issuer: string) => {
     await Clipboard.setStringAsync(code);

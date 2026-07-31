@@ -73,25 +73,20 @@ export default function LoginScreen() {
 
   const handleBiometric = async () => {
     try {
-      const result = await LocalAuthentication.authenticateAsync({
-        promptMessage: 'Unlock FortLock',
-        fallbackLabel: 'Use Password',
-      });
-      if (result.success) {
-        const keyBase64 = await SecureStore.getItemAsync(
-          'fortlock_biometric_key'
-        );
-        if (keyBase64) {
-          const { Buffer: BufferClass } = require('buffer');
-          const masterKey = BufferClass.from(keyBase64, 'base64');
-          const decrypted = await getDecryptedCredentials(masterKey);
-          setMasterKey(masterKey);
-          setDecryptedCredentials(decrypted);
-          setAuthenticated(true);
-          router.replace('/dashboard');
-        } else {
-          Alert.alert('Error', 'Please use your master password to unlock.');
-        }
+      const keyBase64 = await SecureStore.getItemAsync(
+        'fortlock_biometric_key',
+        { requireAuthentication: true, authenticationPrompt: 'Unlock FortLock' }
+      );
+      if (keyBase64) {
+        const { Buffer: BufferClass } = require('buffer');
+        const masterKey = BufferClass.from(keyBase64, 'base64');
+        const decrypted = await getDecryptedCredentials(masterKey);
+        setMasterKey(masterKey);
+        setDecryptedCredentials(decrypted);
+        setAuthenticated(true);
+        router.replace('/dashboard');
+      } else {
+        Alert.alert('Error', 'Please use your master password to unlock.');
       }
     } catch {
       Alert.alert('Error', 'Biometric authentication failed.');
