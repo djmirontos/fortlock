@@ -44,6 +44,7 @@ export default function RootLayout() {
           <Stack.Screen name="dashboard" options={{ animation: 'none' }} />
           <Stack.Screen name="authenticator" options={{ animation: 'none' }} />
           <Stack.Screen name="add-totp" options={{ animation: 'slide_from_bottom' }} />
+          <Stack.Screen name="totp-detail" options={{ animation: 'ios_from_right' }} />
           <Stack.Screen name="add" options={{ animation: 'slide_from_bottom' }} />
           <Stack.Screen name="detail" options={{ animation: 'ios_from_right' }} />
           <Stack.Screen name="edit" options={{ animation: 'ios_from_right' }} />

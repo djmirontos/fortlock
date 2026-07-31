@@ -11,10 +11,9 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import * as Clipboard from 'expo-clipboard';
 import { useTheme } from '../hooks/useTheme';
 import { useAuthStore } from '../stores/authStore';
-import { getDecryptedTotpEntries, deleteTotpEntry, generateTotpCode, getRemainingSeconds } from '../services/totpService';
+import { getDecryptedTotpEntries, deleteTotpEntry } from '../services/totpService';
 import { TotpEntryDecrypted } from '../types';
 import { useAutoLock } from '../hooks/useAutoLock';
 
@@ -26,8 +25,6 @@ export default function Authenticator() {
 
   const [entries, setEntries] = useState<TotpEntryDecrypted[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [remainingSeconds, setRemainingSeconds] = useState(getRemainingSeconds());
-  const [codes, setCodes] = useState<Record<string, string>>({});
 
   useAutoLock();
 
@@ -39,44 +36,11 @@ export default function Authenticator() {
       getDecryptedTotpEntries(masterKey)
         .then((data) => {
           setEntries(data);
-          // Generate initial codes
-          const initialCodes: Record<string, string> = {};
-          data.forEach((e) => {
-            initialCodes[e.id] = generateTotpCode(e.secret);
-          });
-          setCodes(initialCodes);
         })
         .catch(() => Alert.alert('Error', 'Failed to load authenticator entries.'))
         .finally(() => setIsLoading(false));
     }, [masterKey])
   );
-
-  // Tick every second — starts/stops with screen focus
-  useFocusEffect(
-    useCallback(() => {
-      const interval = setInterval(() => {
-        const secs = getRemainingSeconds();
-        setRemainingSeconds(secs);
-
-        if (secs === 30) {
-          setCodes((prev) => {
-            const updated = { ...prev };
-            entries.forEach((e) => {
-              updated[e.id] = generateTotpCode(e.secret);
-            });
-            return updated;
-          });
-        }
-      }, 1000);
-      return () => clearInterval(interval);
-    }, [entries])
-  );
-
-  const handleCopy = async (code: string, issuer: string) => {
-    await Clipboard.setStringAsync(code);
-    Alert.alert('Copied!', `${issuer} code copied to clipboard.`);
-    setTimeout(() => Clipboard.setStringAsync(''), 30000);
-  };
 
   const handleDelete = (entry: TotpEntryDecrypted) => {
     Alert.alert(
@@ -90,24 +54,13 @@ export default function Authenticator() {
           onPress: async () => {
             await deleteTotpEntry(entry.id);
             setEntries((prev) => prev.filter((e) => e.id !== entry.id));
-            setCodes((prev) => {
-              const updated = { ...prev };
-              delete updated[entry.id];
-              return updated;
-            });
           },
         },
       ]
     );
   };
 
-  const isWarning = remainingSeconds <= 5;
-  const progressPercent = (remainingSeconds / 30) * 100;
-
   const renderEntry = ({ item }: { item: TotpEntryDecrypted }) => {
-    const code = codes[item.id] || '------';
-    const formatted = code.slice(0, 3) + ' ' + code.slice(3);
-
     return (
       <TouchableOpacity
         style={{
@@ -115,39 +68,43 @@ export default function Authenticator() {
           marginBottom: 10,
           borderRadius: 16,
           backgroundColor: theme.surface,
-          padding: 16,
+          paddingHorizontal: 16,
+          paddingVertical: 14,
           elevation: 1,
           shadowColor: '#000',
           shadowOffset: { width: 0, height: 1 },
           shadowOpacity: 0.04,
           shadowRadius: 4,
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 12,
         }}
         activeOpacity={0.7}
-        onPress={() => handleCopy(code, item.issuer)}
+        onPress={() => router.push({ pathname: '/totp-detail', params: { id: item.id } })}
       >
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          {/* Color dot + issuer */}
-          <View style={{
-            width: 44, height: 44, borderRadius: 12,
-            backgroundColor: item.color + '20',
-            alignItems: 'center', justifyContent: 'center',
-            marginRight: 12,
-          }}>
-            <Text style={{ fontSize: 20, fontWeight: '700', color: item.color }}>
-              {item.issuer.charAt(0).toUpperCase()}
-            </Text>
-          </View>
+        {/* Color avatar */}
+        <View style={{
+          width: 44, height: 44, borderRadius: 12,
+          backgroundColor: item.color + '20',
+          alignItems: 'center', justifyContent: 'center',
+        }}>
+          <Text style={{ fontSize: 20, fontWeight: '700', color: item.color }}>
+            {item.issuer.charAt(0).toUpperCase()}
+          </Text>
+        </View>
 
-          <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 14, fontWeight: '600', color: theme.textPrimary }}>
-              {item.issuer}
-            </Text>
-            <Text style={{ fontSize: 12, color: theme.textSecondary, marginTop: 1 }}>
-              {item.account}
-            </Text>
-          </View>
+        {/* Info */}
+        <View style={{ flex: 1 }}>
+          <Text style={{ fontSize: 15, fontWeight: '600', color: theme.textPrimary }}>
+            {item.issuer}
+          </Text>
+          <Text style={{ fontSize: 12, color: theme.textSecondary, marginTop: 2 }}>
+            {item.account}
+          </Text>
+        </View>
 
-          {/* Delete button */}
+        {/* Delete + chevron */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
           <TouchableOpacity
             onPress={() => handleDelete(item)}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
@@ -159,55 +116,8 @@ export default function Authenticator() {
           >
             <Ionicons name="trash-outline" size={15} color={theme.textSecondary} />
           </TouchableOpacity>
+          <Ionicons name="chevron-forward" size={16} color={theme.stroke} />
         </View>
-
-        {/* Code row */}
-        <View style={{
-          flexDirection: 'row', alignItems: 'center',
-          marginTop: 14, justifyContent: 'space-between',
-        }}>
-          <Text style={{
-            fontSize: 34, fontWeight: '700', letterSpacing: 4,
-            color: isWarning ? '#EF4444' : item.color,
-            fontFamily: 'monospace',
-          }}>
-            {formatted}
-          </Text>
-
-          {/* Countdown ring */}
-          <View style={{ alignItems: 'center', gap: 4 }}>
-            <View style={{
-              width: 40, height: 40, borderRadius: 20,
-              borderWidth: 3,
-              borderColor: isWarning ? '#EF4444' : item.color,
-              alignItems: 'center', justifyContent: 'center',
-              opacity: 0.3 + (progressPercent / 100) * 0.7,
-            }}>
-              <Text style={{ fontSize: 13, fontWeight: '700', color: isWarning ? '#EF4444' : item.color }}>
-                {remainingSeconds}
-              </Text>
-            </View>
-            <Text style={{ fontSize: 10, color: theme.textSecondary }}>sec</Text>
-          </View>
-        </View>
-
-        {/* Progress bar */}
-        <View style={{
-          height: 3, backgroundColor: theme.surfaceSecondary,
-          borderRadius: 2, marginTop: 10, overflow: 'hidden',
-        }}>
-          <View style={{
-            height: '100%',
-            width: `${progressPercent}%`,
-            backgroundColor: isWarning ? '#EF4444' : item.color,
-            borderRadius: 2,
-          }} />
-        </View>
-
-        {/* Tap to copy hint */}
-        <Text style={{ fontSize: 11, color: theme.textSecondary, marginTop: 6, textAlign: 'center' }}>
-          Tap to copy code
-        </Text>
       </TouchableOpacity>
     );
   };
@@ -243,17 +153,6 @@ export default function Authenticator() {
           </Text>
           <Text style={{ fontSize: 12, color: theme.textSecondary, marginTop: 1 }}>
             {entries.length} account{entries.length !== 1 ? 's' : ''} protected
-          </Text>
-        </View>
-        {/* Global countdown */}
-        <View style={{
-          backgroundColor: isWarning ? '#FEF2F2' : theme.surfaceSecondary,
-          borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6,
-          flexDirection: 'row', alignItems: 'center', gap: 4,
-        }}>
-          <Ionicons name="time-outline" size={14} color={isWarning ? '#EF4444' : theme.textSecondary} />
-          <Text style={{ fontSize: 13, fontWeight: '600', color: isWarning ? '#EF4444' : theme.textSecondary }}>
-            {remainingSeconds}s
           </Text>
         </View>
       </View>
