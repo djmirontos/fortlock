@@ -8,10 +8,12 @@ import {
   Clipboard,
   StatusBar,
   Animated,
+  Modal,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import { CameraView, Camera } from "expo-camera";
 import { useTheme } from "../hooks/useTheme";
 import { useAuthStore } from "../stores/authStore";
 import { deleteCredential, getDecryptedCredentials } from "../services/dbService";
@@ -53,6 +55,10 @@ export default function DetailScreen() {
   const [showCVV, setShowCVV] = useState(false);
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
+  const [showWebBridge, setShowWebBridge] = useState(false);
+  const [hasPermission, setHasPermission] = useState<boolean | null>(null);
+  const [scanned, setScanned] = useState(false);
+  const [isSending, setIsSending] = useState(false);
   const toastOpacity = useRef(new Animated.Value(0)).current;
   const toastTranslateY = useRef(new Animated.Value(-20)).current;
 
@@ -124,6 +130,70 @@ export default function DetailScreen() {
 
   const handleEdit = () => {
     router.push({ pathname: "/edit", params: { id: credential!.id } });
+  };
+
+  const handleSendToDesktop = async () => {
+    const { status } = await Camera.requestCameraPermissionsAsync();
+    setHasPermission(status === 'granted');
+    setScanned(false);
+    setIsSending(false);
+    setShowWebBridge(true);
+  };
+
+  const handleQRScanned = async ({ data }: { data: string }) => {
+    if (scanned || isSending) return;
+    setScanned(true);
+    setIsSending(true);
+
+    try {
+      // Validate it's a FortLock relay URL
+      const ALLOWED_HOSTS = ['fortlock-web.vercel.app'];
+      const url = new URL(data);
+      if (
+        url.protocol !== 'https:' ||
+        !ALLOWED_HOSTS.includes(url.hostname) ||
+        !url.pathname.startsWith('/api/relay/')
+      ) {
+        Alert.alert('Invalid QR Code', 'Please scan the QR code from fortlock-web.vercel.app', [
+          { text: 'Try Again', onPress: () => setScanned(false) },
+        ]);
+        setIsSending(false);
+        return;
+      }
+
+      // Determine what to send based on credential type
+      const valueToSend = isBanking
+        ? credential!.data.cardNumber || ''
+        : credential!.data.password || '';
+
+      const res = await fetch(data, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ data: valueToSend }),
+      });
+
+      if (res.ok) {
+        setShowWebBridge(false);
+        showSuccessToast('Password sent to desktop!');
+      } else if (res.status === 404 || res.status === 410) {
+        Alert.alert('Session Expired', 'The QR code has expired. Please generate a new one on the desktop.', [
+          { text: 'OK', onPress: () => setShowWebBridge(false) },
+        ]);
+      } else {
+        throw new Error('Failed to send');
+      }
+    } catch (error: any) {
+      if (error?.message === 'Invalid URL') {
+        Alert.alert('Invalid QR Code', 'Please scan the QR code from fortlock-web.vercel.app', [
+          { text: 'Try Again', onPress: () => setScanned(false) },
+        ]);
+      } else {
+        Alert.alert('Error', 'Failed to send password to desktop. Please try again.', [
+          { text: 'Try Again', onPress: () => setScanned(false) },
+        ]);
+      }
+      setIsSending(false);
+    }
   };
 
   if (!masterKey) {
@@ -504,6 +574,26 @@ export default function DetailScreen() {
               width: "100%",
               height: 52,
               borderRadius: 14,
+              backgroundColor: theme.surfaceSecondary,
+              alignItems: "center",
+              justifyContent: "center",
+              marginBottom: 12,
+              flexDirection: "row",
+              gap: 8,
+            }}
+            onPress={handleSendToDesktop}
+          >
+            <Ionicons name="desktop-outline" size={18} color={theme.textPrimary} />
+            <Text style={{ color: theme.textPrimary, fontSize: 15, fontWeight: "700" }}>
+              Send to Desktop
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={{
+              width: "100%",
+              height: 52,
+              borderRadius: 14,
               backgroundColor: "#FEF2F2",
               borderWidth: 1,
               borderColor: "#FECACA",
@@ -553,6 +643,97 @@ export default function DetailScreen() {
           </View>
         </Animated.View>
       )}
+
+      {/* Web Bridge QR Scanner Modal */}
+      <Modal visible={showWebBridge} animationType="slide" onRequestClose={() => setShowWebBridge(false)}>
+        <View style={{ flex: 1, backgroundColor: '#000000' }}>
+          {/* Header */}
+          <View style={{
+            paddingTop: insets.top + 12,
+            paddingBottom: 14,
+            paddingHorizontal: 20,
+            flexDirection: 'row',
+            alignItems: 'center',
+            backgroundColor: '#1C1C1E',
+          }}>
+            <TouchableOpacity
+              onPress={() => setShowWebBridge(false)}
+              style={{ width: 40, height: 40, justifyContent: 'center', alignItems: 'flex-start' }}
+            >
+              <Ionicons name="close" size={24} color="#FFFFFF" />
+            </TouchableOpacity>
+            <View style={{ flex: 1, alignItems: 'center' }}>
+              <Text style={{ fontSize: 17, fontWeight: '700', color: '#FFFFFF' }}>
+                Send to Desktop
+              </Text>
+              <Text style={{ fontSize: 12, color: '#8E8E93', marginTop: 2 }}>
+                Scan the QR code on fortlock-web.vercel.app
+              </Text>
+            </View>
+            <View style={{ width: 40 }} />
+          </View>
+
+          {/* Camera */}
+          {hasPermission === false && (
+            <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32 }}>
+              <Ionicons name="videocam-off-outline" size={64} color="#8E8E93" />
+              <Text style={{ fontSize: 17, fontWeight: '600', color: '#FFFFFF', marginTop: 16, textAlign: 'center' }}>
+                Camera Access Required
+              </Text>
+              <Text style={{ fontSize: 14, color: '#8E8E93', marginTop: 8, textAlign: 'center', lineHeight: 20 }}>
+                Please enable camera access in your device settings.
+              </Text>
+            </View>
+          )}
+
+          {hasPermission === true && (
+            <View style={{ flex: 1, position: 'relative' }}>
+              <CameraView
+                style={{ flex: 1 }}
+                facing="back"
+                onBarcodeScanned={scanned ? undefined : handleQRScanned}
+                barcodeScannerSettings={{ barcodeTypes: ['qr'] }}
+              />
+              {/* Overlay */}
+              <View style={{
+                position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+                alignItems: 'center', justifyContent: 'center',
+              }}>
+                <View style={{
+                  width: 240, height: 240, borderRadius: 20,
+                  borderWidth: 2, borderColor: '#4F6EF7',
+                }} />
+                <Text style={{
+                  color: '#FFFFFF', marginTop: 20, fontSize: 14,
+                  textAlign: 'center', fontWeight: '500',
+                  textShadowColor: 'rgba(0,0,0,0.8)',
+                  textShadowOffset: { width: 0, height: 1 },
+                  textShadowRadius: 4,
+                }}>
+                  Point at the QR code on your desktop
+                </Text>
+              </View>
+
+              {isSending && (
+                <View style={{
+                  position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+                  backgroundColor: 'rgba(0,0,0,0.7)',
+                  alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <Text style={{ color: '#FFFFFF', fontSize: 18, fontWeight: '700' }}>✓</Text>
+                  <Text style={{ color: '#FFFFFF', marginTop: 8, fontSize: 15 }}>Sending to desktop...</Text>
+                </View>
+              )}
+            </View>
+          )}
+
+          {hasPermission === null && (
+            <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+              <Text style={{ color: '#8E8E93' }}>Requesting camera permission...</Text>
+            </View>
+          )}
+        </View>
+      </Modal>
     </View>
   );
 }
