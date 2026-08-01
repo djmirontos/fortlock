@@ -17,7 +17,7 @@ import { CameraView, Camera } from "expo-camera";
 import { useTheme } from "../hooks/useTheme";
 import { useAuthStore } from "../stores/authStore";
 import { deleteCredential, getDecryptedCredentials } from "../services/dbService";
-import { DecryptedCredential } from "../types";
+import { DecryptedCredential, CustomField } from "../types";
 import ServiceLogo from "../components/ServiceLogo";
 
 const getCategoryPillColor = (category: string) => {
@@ -59,6 +59,7 @@ export default function DetailScreen() {
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
   const [scanned, setScanned] = useState(false);
   const [isSending, setIsSending] = useState(false);
+  const [showCustomFields, setShowCustomFields] = useState<Record<string, boolean>>({});
   const toastOpacity = useRef(new Animated.Value(0)).current;
   const toastTranslateY = useRef(new Animated.Value(-20)).current;
 
@@ -545,6 +546,60 @@ export default function DetailScreen() {
                 >
                   <Ionicons name="copy-outline" size={20} color={COLORS.accent} />
                 </TouchableOpacity>
+              </View>
+            </View>
+          )}
+
+          {/* Custom Fields (if any) */}
+          {credential.data.customFields && credential.data.customFields.length > 0 && (
+            <View style={{ marginTop: 12 }}>
+              <View style={{
+                backgroundColor: COLORS.card,
+                borderRadius: 20,
+                overflow: 'hidden',
+                elevation: 1,
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.06,
+                shadowRadius: 8,
+              }}>
+                {credential.data.customFields.map((field, index) => (
+                  <View key={field.id}>
+                    <View style={fieldRowStyle}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={labelStyle}>{field.label}</Text>
+                        <Text style={valueStyle}>
+                          {field.type === 'password' && !showCustomFields[field.id]
+                            ? '••••••••'
+                            : field.value}
+                        </Text>
+                      </View>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
+                        {field.type === 'password' && (
+                          <TouchableOpacity
+                            onPress={() => setShowCustomFields((prev) => ({ ...prev, [field.id]: !prev[field.id] }))}
+                            hitSlop={hitSlop}
+                          >
+                            <Ionicons
+                              name={showCustomFields[field.id] ? 'eye-off-outline' : 'eye-outline'}
+                              size={20}
+                              color={COLORS.textSecondary}
+                            />
+                          </TouchableOpacity>
+                        )}
+                        <TouchableOpacity
+                          onPress={() => handleCopy(field.value, field.label)}
+                          hitSlop={hitSlop}
+                        >
+                          <Ionicons name="copy-outline" size={20} color={COLORS.accent} />
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                    {index < (credential.data.customFields?.length ?? 0) - 1 && (
+                      <View style={dividerStyle} />
+                    )}
+                  </View>
+                ))}
               </View>
             </View>
           )}

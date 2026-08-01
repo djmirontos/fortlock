@@ -18,6 +18,7 @@ export interface CredentialData {
   cardNumber?: string;
   expiryDate?: string;
   cvv?: string;
+  customFields?: CustomField[];
 }
 
 // Encrypted credential (what's stored)
@@ -70,4 +71,13 @@ export interface Tag {
   label: string;
   color: string;
   createdAt: number;
+}
+
+export type CustomFieldType = 'text' | 'password' | 'phone' | 'url' | 'number';
+
+export interface CustomField {
+  id: string;
+  label: string;
+  value: string;
+  type: CustomFieldType;
 }

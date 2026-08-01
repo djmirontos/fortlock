@@ -11,6 +11,7 @@ import {
   Platform,
   Animated,
   Alert,
+  Modal,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
@@ -19,7 +20,7 @@ import { useTheme } from "../hooks/useTheme";
 import { useAuthStore } from "../stores/authStore";
 import { updateCredential, getDecryptedCredentials, updateCredentialTags } from "../services/dbService";
 import { getTags } from "../services/tagService";
-import { DecryptedCredential, CredentialData, CredentialCategory, Tag } from "../types";
+import { DecryptedCredential, CredentialData, CredentialCategory, Tag, CustomField, CustomFieldType } from "../types";
 
 const formatCardNumber = (text: string): string => {
   const digits = text.replace(/\D/g, "");
@@ -63,6 +64,13 @@ export default function EditCredential() {
   const [category, setCategory] = useState<CredentialCategory>("general");
   const [tags, setTags] = useState<Tag[]>([]);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
+
+  // Custom fields
+  const [customFields, setCustomFields] = useState<CustomField[]>([]);
+  const [showAddFieldModal, setShowAddFieldModal] = useState(false);
+  const [newFieldLabel, setNewFieldLabel] = useState('');
+  const [newFieldType, setNewFieldType] = useState<CustomFieldType>('text');
+  const [showCustomFieldPassword, setShowCustomFieldPassword] = useState<Record<string, boolean>>({});
   const [password, setPassword] = useState("");
   const [notes, setNotes] = useState("");
 
@@ -106,6 +114,7 @@ export default function EditCredential() {
         setPassword(credential.data.password || "");
       }
       setNotes(credential.data.notes || "");
+      setCustomFields(credential.data.customFields ?? []);
     }
   }, [credential?.id]);
 
@@ -114,6 +123,36 @@ export default function EditCredential() {
       return bankName.trim() && cardHolder.trim() && cardNumber.trim() && expiryDate.trim() && cvv.trim();
     }
     return serviceName.trim() && username.trim() && password.trim();
+  };
+
+  const generateFieldId = () => `field_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+
+  const handleAddCustomField = () => {
+    if (!newFieldLabel.trim()) return;
+    if (customFields.length >= 10) return;
+    const newField: CustomField = {
+      id: generateFieldId(),
+      label: newFieldLabel.trim(),
+      value: '',
+      type: newFieldType,
+    };
+    setCustomFields((prev) => [...prev, newField]);
+    setNewFieldLabel('');
+    setNewFieldType('text');
+    setShowAddFieldModal(false);
+  };
+
+  const handleUpdateCustomField = (id: string, value: string) => {
+    setCustomFields((prev) => prev.map((f) => f.id === id ? { ...f, value } : f));
+  };
+
+  const handleDeleteCustomField = (id: string) => {
+    setCustomFields((prev) => prev.filter((f) => f.id !== id));
+    setShowCustomFieldPassword((prev) => {
+      const updated = { ...prev };
+      delete updated[id];
+      return updated;
+    });
   };
 
   const showSuccessToast = () => {
@@ -162,11 +201,13 @@ export default function EditCredential() {
         expiryDate,
         cvv,
         notes,
+        customFields: customFields.filter((f) => f.value.trim() !== ''),
       } : {
         serviceName,
         username,
         password,
         notes,
+        customFields: customFields.filter((f) => f.value.trim() !== ''),
       };
 
       await updateCredential(credential.id, data, masterKey);
@@ -531,6 +572,92 @@ export default function EditCredential() {
               multiline
             />
           </View>
+
+          {/* Custom Fields */}
+          {customFields.map((field) => (
+            <View
+              key={field.id}
+              style={{
+                backgroundColor: COLORS.card,
+                borderRadius: 20,
+                overflow: 'hidden',
+                elevation: 1,
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.06,
+                shadowRadius: 8,
+                marginBottom: 10,
+              }}
+            >
+              <View style={{ paddingHorizontal: 16, paddingTop: 14, paddingBottom: 6, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                <Text style={labelStyle}>{field.label}</Text>
+                <TouchableOpacity
+                  onPress={() => handleDeleteCustomField(field.id)}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
+                  <Ionicons name="close-circle" size={18} color={theme.textSecondary} />
+                </TouchableOpacity>
+              </View>
+              <View style={{ paddingHorizontal: 16, paddingBottom: 14, flexDirection: 'row', alignItems: 'center' }}>
+                <TextInput
+                  style={[inputStyle, { flex: 1 }]}
+                  placeholder={`Enter ${field.label.toLowerCase()}`}
+                  placeholderTextColor={COLORS.placeholder}
+                  value={field.value}
+                  onChangeText={(text) => handleUpdateCustomField(field.id, text)}
+                  secureTextEntry={field.type === 'password' && !showCustomFieldPassword[field.id]}
+                  keyboardType={
+                    field.type === 'phone' ? 'phone-pad' :
+                    field.type === 'number' ? 'numeric' :
+                    field.type === 'url' ? 'url' : 'default'
+                  }
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+                {field.type === 'password' && (
+                  <TouchableOpacity
+                    onPress={() => setShowCustomFieldPassword((prev) => ({ ...prev, [field.id]: !prev[field.id] }))}
+                    style={{ width: 40, height: 40, justifyContent: 'center', alignItems: 'center' }}
+                  >
+                    <Ionicons
+                      name={showCustomFieldPassword[field.id] ? 'eye-outline' : 'eye-off-outline'}
+                      size={20}
+                      color={COLORS.textSecondary}
+                    />
+                  </TouchableOpacity>
+                )}
+              </View>
+            </View>
+          ))}
+
+          {/* Add Field Button */}
+          {customFields.length < 10 ? (
+            <TouchableOpacity
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 8,
+                paddingVertical: 14,
+                marginBottom: 16,
+                borderRadius: 14,
+                borderWidth: 1.5,
+                borderColor: '#4F6EF7',
+                borderStyle: 'dashed',
+              }}
+              onPress={() => setShowAddFieldModal(true)}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="add-circle-outline" size={20} color="#4F6EF7" />
+              <Text style={{ fontSize: 14, fontWeight: '600', color: '#4F6EF7' }}>
+                Add Custom Field
+              </Text>
+            </TouchableOpacity>
+          ) : (
+            <Text style={{ fontSize: 12, color: theme.textSecondary, textAlign: 'center', marginBottom: 16 }}>
+              Maximum 10 custom fields reached
+            </Text>
+          )}
         </ScrollView>
       </KeyboardAvoidingView>
 
@@ -612,6 +739,101 @@ export default function EditCredential() {
           </View>
         </Animated.View>
       )}
+
+      {/* Add Custom Field Modal */}
+      <Modal
+        visible={showAddFieldModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowAddFieldModal(false)}
+      >
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' }}>
+          <TouchableOpacity style={{ flex: 1 }} onPress={() => setShowAddFieldModal(false)} />
+          <View style={{
+            backgroundColor: theme.surface,
+            borderTopLeftRadius: 24,
+            borderTopRightRadius: 24,
+            padding: 24,
+            paddingBottom: insets.bottom + 24,
+          }}>
+            <View style={{ width: 36, height: 4, backgroundColor: theme.stroke, borderRadius: 2, alignSelf: 'center', marginBottom: 20 }} />
+            <Text style={{ fontSize: 17, fontWeight: '700', color: theme.textPrimary, marginBottom: 16 }}>
+              Add Custom Field
+            </Text>
+
+            {/* Field Label */}
+            <Text style={[labelStyle, { marginBottom: 8 }]}>Field Name</Text>
+            <View style={{
+              borderWidth: 1, borderColor: theme.stroke, borderRadius: 12,
+              paddingHorizontal: 14, height: 48, justifyContent: 'center',
+              backgroundColor: theme.background, marginBottom: 16,
+            }}>
+              <TextInput
+                style={{ fontSize: 15, color: theme.textPrimary, padding: 0 }}
+                placeholder="e.g. Phone, Website, PIN"
+                placeholderTextColor={theme.textSecondary}
+                value={newFieldLabel}
+                onChangeText={setNewFieldLabel}
+                autoFocus
+                autoCorrect={false}
+              />
+            </View>
+
+            {/* Field Type */}
+            <Text style={[labelStyle, { marginBottom: 8 }]}>Field Type</Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 24 }}>
+              {([
+                { type: 'text', label: 'Text', icon: 'text-outline' },
+                { type: 'password', label: 'Password', icon: 'lock-closed-outline' },
+                { type: 'phone', label: 'Phone', icon: 'call-outline' },
+                { type: 'url', label: 'URL', icon: 'link-outline' },
+                { type: 'number', label: 'Number', icon: 'calculator-outline' },
+              ] as { type: CustomFieldType; label: string; icon: string }[]).map((option) => (
+                <TouchableOpacity
+                  key={option.type}
+                  style={{
+                    flexDirection: 'row', alignItems: 'center', gap: 6,
+                    paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20,
+                    backgroundColor: newFieldType === option.type ? '#4F6EF7' : theme.surfaceSecondary,
+                  }}
+                  onPress={() => setNewFieldType(option.type)}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons
+                    name={option.icon as any}
+                    size={14}
+                    color={newFieldType === option.type ? '#FFFFFF' : theme.textSecondary}
+                  />
+                  <Text style={{
+                    fontSize: 13, fontWeight: '600',
+                    color: newFieldType === option.type ? '#FFFFFF' : theme.textSecondary,
+                  }}>
+                    {option.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {/* Add Button */}
+            <TouchableOpacity
+              style={{
+                height: 52, borderRadius: 14, alignItems: 'center', justifyContent: 'center',
+                backgroundColor: newFieldLabel.trim() ? '#4F6EF7' : theme.surfaceSecondary,
+              }}
+              onPress={handleAddCustomField}
+              disabled={!newFieldLabel.trim()}
+              activeOpacity={0.85}
+            >
+              <Text style={{
+                fontSize: 16, fontWeight: '700',
+                color: newFieldLabel.trim() ? '#FFFFFF' : theme.textSecondary,
+              }}>
+                Add Field
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
