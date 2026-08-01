@@ -5,6 +5,7 @@ import {
   TextInput,
   TouchableOpacity,
   ScrollView,
+  FlatList,
   StatusBar,
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -56,6 +57,7 @@ export default function EditCredential() {
   const credential = decryptedCredentials.find((c) => c.id === id) as DecryptedCredential | undefined;
   const [updating, setUpdating] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [showCvv, setShowCvv] = useState(false);
   const [showToast, setShowToast] = useState(false);
   const toastOpacity = useRef(new Animated.Value(0)).current;
   const toastTranslateY = useRef(new Animated.Value(-20)).current;
@@ -241,11 +243,31 @@ export default function EditCredential() {
     padding: 0,
   };
 
+  // Row lays out a leading icon badge beside the label+input column
   const fieldRowStyle = {
     paddingHorizontal: 16,
     paddingVertical: 14,
     minHeight: 64,
+    flexDirection: "row" as const,
+    alignItems: "flex-start" as const,
+    gap: 12,
   };
+
+  const iconBoxStyle = {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: theme.surfaceSecondary,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    marginTop: 2,
+  };
+
+  const customFieldIcon = (type: CustomFieldType) =>
+    type === "password" ? "lock-closed-outline" :
+    type === "phone" ? "call-outline" :
+    type === "url" ? "link-outline" :
+    type === "number" ? "calculator-outline" : "text-outline";
 
   const dividerStyle = {
     height: 1,
@@ -341,63 +363,70 @@ export default function EditCredential() {
         </View>
       </View>
 
-      {/* Tag multi-select — editable, outside ScrollView */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ paddingHorizontal: 20, paddingVertical: 12, gap: 8, flexDirection: 'row' }}
-        style={{ backgroundColor: theme.surface }}
-      >
-        {tags.map((tag) => {
-          const isSelected = selectedTags.includes(tag.id);
-          return (
-            <TouchableOpacity
-              key={tag.id}
-              style={{
-                height: 34,
-                paddingHorizontal: 14,
-                borderRadius: 17,
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 6,
-                backgroundColor: isSelected ? tag.color : theme.surfaceSecondary,
-              }}
-              onPress={() => {
-                setSelectedTags((prev) =>
-                  prev.includes(tag.id)
-                    ? prev.filter((id) => id !== tag.id)
-                    : [...prev, tag.id]
-                );
-              }}
-              activeOpacity={0.7}
-            >
-              <View style={{
-                width: 6, height: 6, borderRadius: 3,
-                backgroundColor: isSelected ? '#FFFFFF' : tag.color,
-              }} />
-              <Text style={{
-                fontSize: 13,
-                fontWeight: '600',
-                color: isSelected ? '#FFFFFF' : theme.textSecondary,
-              }}>
-                {tag.label}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-      </ScrollView>
-
-      {/* Content — INSIDE KeyboardAvoidingView + ScrollView */}
+      {/* Content — a single FlatList is the only vertical scroll container.
+          The horizontal tag ScrollView inside ListHeaderComponent is safe
+          because it scrolls on the other axis. */}
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={{ flex: 1 }}
       >
-        <ScrollView
-          style={{ flex: 1 }}
-          contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 120 }}
-          showsVerticalScrollIndicator={false}
+        <FlatList
+          data={[]}
+          renderItem={null}
           keyboardShouldPersistTaps="handled"
-        >
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: 120 }}
+          ListHeaderComponent={
+            <View>
+              {/* Horizontal tag chips */}
+              <View style={{ backgroundColor: theme.surface, paddingVertical: 12 }}>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={{ paddingHorizontal: 20, gap: 8, flexDirection: 'row' }}
+                  keyboardShouldPersistTaps="handled"
+                >
+                  {tags.map((tag) => {
+                    const isSelected = selectedTags.includes(tag.id);
+                    return (
+                      <TouchableOpacity
+                        key={tag.id}
+                        style={{
+                          height: 34,
+                          paddingHorizontal: 14,
+                          borderRadius: 17,
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          gap: 6,
+                          backgroundColor: isSelected ? tag.color : theme.surfaceSecondary,
+                        }}
+                        onPress={() => {
+                          setSelectedTags((prev) =>
+                            prev.includes(tag.id)
+                              ? prev.filter((id) => id !== tag.id)
+                              : [...prev, tag.id]
+                          );
+                        }}
+                        activeOpacity={0.7}
+                      >
+                        <View style={{
+                          width: 6, height: 6, borderRadius: 3,
+                          backgroundColor: isSelected ? '#FFFFFF' : tag.color,
+                        }} />
+                        <Text style={{
+                          fontSize: 13,
+                          fontWeight: '600',
+                          color: isSelected ? '#FFFFFF' : theme.textSecondary,
+                        }}>
+                          {tag.label}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+              </View>
+
+              <View style={{ paddingHorizontal: 16, paddingTop: 16 }}>
           {/* Form Card */}
           <View
             style={{
@@ -416,130 +445,182 @@ export default function EditCredential() {
               <>
                 {/* Bank Name */}
                 <View style={fieldRowStyle}>
-                  <Text style={labelStyle}>Bank Name</Text>
-                  <TextInput
-                    style={inputStyle}
-                    placeholder="Enter bank name"
-                    placeholderTextColor={COLORS.placeholder}
-                    value={bankName}
-                    onChangeText={setBankName}
-                  />
+                  <View style={iconBoxStyle}>
+                    <Ionicons name="business-outline" size={18} color="#4F6EF7" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={labelStyle}>Bank Name</Text>
+                    <TextInput
+                      style={inputStyle}
+                      placeholder="e.g. BDO, BPI, Metrobank"
+                      placeholderTextColor={COLORS.placeholder}
+                      value={bankName}
+                      onChangeText={setBankName}
+                    />
+                  </View>
                 </View>
                 <View style={dividerStyle} />
 
                 {/* Card Holder Name */}
                 <View style={fieldRowStyle}>
-                  <Text style={labelStyle}>Card Holder Name</Text>
-                  <TextInput
-                    style={inputStyle}
-                    placeholder="e.g. JUAN DELA CRUZ"
-                    placeholderTextColor={COLORS.placeholder}
-                    value={cardHolder}
-                    onChangeText={setCardHolder}
-                    autoCapitalize="characters"
-                  />
+                  <View style={iconBoxStyle}>
+                    <Ionicons name="card-outline" size={18} color="#4F6EF7" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={labelStyle}>Card Holder Name</Text>
+                    <TextInput
+                      style={inputStyle}
+                      placeholder="e.g. JUAN DELA CRUZ"
+                      placeholderTextColor={COLORS.placeholder}
+                      value={cardHolder}
+                      onChangeText={setCardHolder}
+                      autoCapitalize="characters"
+                    />
+                  </View>
                 </View>
                 <View style={dividerStyle} />
 
                 {/* Card Number */}
                 <View style={fieldRowStyle}>
-                  <Text style={labelStyle}>Card Number</Text>
-                  <TextInput
-                    style={inputStyle}
-                    placeholder="1234 5678 9012 3456"
-                    placeholderTextColor={COLORS.placeholder}
-                    value={cardNumber}
-                    onChangeText={(text) => setCardNumber(formatCardNumber(text))}
-                    keyboardType="numeric"
-                    maxLength={19}
-                  />
+                  <View style={iconBoxStyle}>
+                    <Ionicons name="card-outline" size={18} color="#4F6EF7" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={labelStyle}>Card Number</Text>
+                    <TextInput
+                      style={inputStyle}
+                      placeholder="1234 5678 9012 3456"
+                      placeholderTextColor={COLORS.placeholder}
+                      value={cardNumber}
+                      onChangeText={(text) => setCardNumber(formatCardNumber(text))}
+                      keyboardType="numeric"
+                      maxLength={19}
+                    />
+                  </View>
                 </View>
                 <View style={dividerStyle} />
 
                 {/* Expiry Date */}
                 <View style={fieldRowStyle}>
-                  <Text style={labelStyle}>Expiry Date</Text>
-                  <TextInput
-                    style={inputStyle}
-                    placeholder="MM/YY"
-                    placeholderTextColor={COLORS.placeholder}
-                    value={expiryDate}
-                    onChangeText={(text) => setExpiryDate(formatExpiryDate(text))}
-                    keyboardType="numeric"
-                    maxLength={5}
-                  />
+                  <View style={iconBoxStyle}>
+                    <Ionicons name="calendar-outline" size={18} color="#4F6EF7" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={labelStyle}>Expiry Date</Text>
+                    <TextInput
+                      style={inputStyle}
+                      placeholder="MM/YY"
+                      placeholderTextColor={COLORS.placeholder}
+                      value={expiryDate}
+                      onChangeText={(text) => setExpiryDate(formatExpiryDate(text))}
+                      keyboardType="numeric"
+                      maxLength={5}
+                    />
+                  </View>
                 </View>
                 <View style={dividerStyle} />
 
                 {/* CVV */}
                 <View style={fieldRowStyle}>
-                  <Text style={labelStyle}>CVV</Text>
-                  <TextInput
-                    style={inputStyle}
-                    placeholder="123"
-                    placeholderTextColor={COLORS.placeholder}
-                    value={cvv}
-                    onChangeText={(text) => setCvv(text.replace(/\D/g, "").substring(0, 4))}
-                    keyboardType="numeric"
-                    maxLength={4}
-                    secureTextEntry
-                  />
+                  <View style={iconBoxStyle}>
+                    <Ionicons name="shield-outline" size={18} color="#4F6EF7" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={labelStyle}>CVV</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <TextInput
+                        style={[inputStyle, { flex: 1 }]}
+                        placeholder="•••"
+                        placeholderTextColor={COLORS.placeholder}
+                        value={cvv}
+                        onChangeText={(text) => setCvv(text.replace(/\D/g, "").substring(0, 4))}
+                        keyboardType="numeric"
+                        maxLength={4}
+                        secureTextEntry={!showCvv}
+                      />
+                      <TouchableOpacity
+                        onPress={() => setShowCvv(!showCvv)}
+                        style={{ width: 40, height: 40, justifyContent: 'center', alignItems: 'center' }}
+                      >
+                        <Ionicons
+                          name={showCvv ? 'eye-outline' : 'eye-off-outline'}
+                          size={20}
+                          color={COLORS.textSecondary}
+                        />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
                 </View>
               </>
             ) : (
               <>
                 {/* Website or App */}
                 <View style={fieldRowStyle}>
-                  <Text style={labelStyle}>Website or App</Text>
-                  <TextInput
-                    style={inputStyle}
-                    placeholder="e.g. Gmail, Netflix, GitHub"
-                    placeholderTextColor={COLORS.placeholder}
-                    value={serviceName}
-                    onChangeText={setServiceName}
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                  />
+                  <View style={iconBoxStyle}>
+                    <Ionicons name="globe-outline" size={18} color="#4F6EF7" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={labelStyle}>Website or App</Text>
+                    <TextInput
+                      style={inputStyle}
+                      placeholder="e.g. Gmail, Netflix, GitHub"
+                      placeholderTextColor={COLORS.placeholder}
+                      value={serviceName}
+                      onChangeText={setServiceName}
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                    />
+                  </View>
                 </View>
                 <View style={dividerStyle} />
 
                 {/* Username or Email */}
                 <View style={fieldRowStyle}>
-                  <Text style={labelStyle}>Username or Email</Text>
-                  <TextInput
-                    style={inputStyle}
-                    placeholder="Enter your username or email"
-                    placeholderTextColor={COLORS.placeholder}
-                    value={username}
-                    onChangeText={setUsername}
-                    autoCapitalize="none"
-                    keyboardType="email-address"
-                  />
+                  <View style={iconBoxStyle}>
+                    <Ionicons name="person-outline" size={18} color="#4F6EF7" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={labelStyle}>Username or Email</Text>
+                    <TextInput
+                      style={inputStyle}
+                      placeholder="johndoe@gmail.com"
+                      placeholderTextColor={COLORS.placeholder}
+                      value={username}
+                      onChangeText={setUsername}
+                      autoCapitalize="none"
+                      keyboardType="email-address"
+                    />
+                  </View>
                 </View>
                 <View style={dividerStyle} />
 
                 {/* Password */}
                 <View style={fieldRowStyle}>
-                  <Text style={labelStyle}>Password</Text>
-                  <View style={{ flexDirection: "row", alignItems: "center" }}>
-                    <TextInput
-                      style={[inputStyle, { flex: 1 }]}
-                      placeholder="Enter password"
-                      placeholderTextColor={COLORS.placeholder}
-                      value={password}
-                      onChangeText={setPassword}
-                      secureTextEntry={!showPassword}
-                    />
-                    <TouchableOpacity
-                      onPress={() => setShowPassword(!showPassword)}
-                      style={{ width: 40, height: 40, justifyContent: "center", alignItems: "center" }}
-                    >
-                      <Ionicons
-                        name={showPassword ? "eye-outline" : "eye-off-outline"}
-                        size={20}
-                        color={COLORS.textSecondary}
+                  <View style={iconBoxStyle}>
+                    <Ionicons name="lock-closed-outline" size={18} color="#4F6EF7" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={labelStyle}>Password</Text>
+                    <View style={{ flexDirection: "row", alignItems: "center" }}>
+                      <TextInput
+                        style={[inputStyle, { flex: 1 }]}
+                        placeholder="••••••••••••"
+                        placeholderTextColor={COLORS.placeholder}
+                        value={password}
+                        onChangeText={setPassword}
+                        secureTextEntry={!showPassword}
                       />
-                    </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={() => setShowPassword(!showPassword)}
+                        style={{ width: 40, height: 40, justifyContent: "center", alignItems: "center" }}
+                      >
+                        <Ionicons
+                          name={showPassword ? "eye-outline" : "eye-off-outline"}
+                          size={20}
+                          color={COLORS.textSecondary}
+                        />
+                      </TouchableOpacity>
+                    </View>
                   </View>
                 </View>
               </>
@@ -551,26 +632,33 @@ export default function EditCredential() {
             style={{
               backgroundColor: COLORS.card,
               borderRadius: 20,
+              overflow: "hidden",
               elevation: 1,
               shadowColor: "#000",
               shadowOffset: { width: 0, height: 2 },
               shadowOpacity: 0.06,
               shadowRadius: 8,
-              padding: 16,
               marginBottom: 16,
             }}
           >
-            <Text style={labelStyle}>
-              Notes <Text style={{ fontWeight: "400", textTransform: "none" }}>(optional)</Text>
-            </Text>
-            <TextInput
-              style={[inputStyle, { minHeight: 80, textAlignVertical: "top" }]}
-              placeholder="Add any notes"
-              placeholderTextColor={COLORS.placeholder}
-              value={notes}
-              onChangeText={setNotes}
-              multiline
-            />
+            <View style={fieldRowStyle}>
+              <View style={iconBoxStyle}>
+                <Ionicons name="document-text-outline" size={18} color="#4F6EF7" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={labelStyle}>
+                  Notes <Text style={{ fontWeight: "400", textTransform: "none" }}>(optional)</Text>
+                </Text>
+                <TextInput
+                  style={[inputStyle, { minHeight: 80, textAlignVertical: "top" }]}
+                  placeholder="Add notes, recovery codes, hints..."
+                  placeholderTextColor={COLORS.placeholder}
+                  value={notes}
+                  onChangeText={setNotes}
+                  multiline
+                />
+              </View>
+            </View>
           </View>
 
           {/* Custom Fields */}
@@ -589,43 +677,50 @@ export default function EditCredential() {
                 marginBottom: 10,
               }}
             >
-              <View style={{ paddingHorizontal: 16, paddingTop: 14, paddingBottom: 6, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                <Text style={labelStyle}>{field.label}</Text>
-                <TouchableOpacity
-                  onPress={() => handleDeleteCustomField(field.id)}
-                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                >
-                  <Ionicons name="close-circle" size={18} color={theme.textSecondary} />
-                </TouchableOpacity>
-              </View>
-              <View style={{ paddingHorizontal: 16, paddingBottom: 14, flexDirection: 'row', alignItems: 'center' }}>
-                <TextInput
-                  style={[inputStyle, { flex: 1 }]}
-                  placeholder={`Enter ${field.label.toLowerCase()}`}
-                  placeholderTextColor={COLORS.placeholder}
-                  value={field.value}
-                  onChangeText={(text) => handleUpdateCustomField(field.id, text)}
-                  secureTextEntry={field.type === 'password' && !showCustomFieldPassword[field.id]}
-                  keyboardType={
-                    field.type === 'phone' ? 'phone-pad' :
-                    field.type === 'number' ? 'numeric' :
-                    field.type === 'url' ? 'url' : 'default'
-                  }
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                />
-                {field.type === 'password' && (
-                  <TouchableOpacity
-                    onPress={() => setShowCustomFieldPassword((prev) => ({ ...prev, [field.id]: !prev[field.id] }))}
-                    style={{ width: 40, height: 40, justifyContent: 'center', alignItems: 'center' }}
-                  >
-                    <Ionicons
-                      name={showCustomFieldPassword[field.id] ? 'eye-outline' : 'eye-off-outline'}
-                      size={20}
-                      color={COLORS.textSecondary}
+              <View style={fieldRowStyle}>
+                <View style={iconBoxStyle}>
+                  <Ionicons name={customFieldIcon(field.type)} size={18} color="#4F6EF7" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <Text style={labelStyle}>{field.label}</Text>
+                    <TouchableOpacity
+                      onPress={() => handleDeleteCustomField(field.id)}
+                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    >
+                      <Ionicons name="close-circle" size={18} color={theme.textSecondary} />
+                    </TouchableOpacity>
+                  </View>
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <TextInput
+                      style={[inputStyle, { flex: 1 }]}
+                      placeholder={`Enter ${field.label.toLowerCase()}`}
+                      placeholderTextColor={COLORS.placeholder}
+                      value={field.value}
+                      onChangeText={(text) => handleUpdateCustomField(field.id, text)}
+                      secureTextEntry={field.type === 'password' && !showCustomFieldPassword[field.id]}
+                      keyboardType={
+                        field.type === 'phone' ? 'phone-pad' :
+                        field.type === 'number' ? 'numeric' :
+                        field.type === 'url' ? 'url' : 'default'
+                      }
+                      autoCapitalize="none"
+                      autoCorrect={false}
                     />
-                  </TouchableOpacity>
-                )}
+                    {field.type === 'password' && (
+                      <TouchableOpacity
+                        onPress={() => setShowCustomFieldPassword((prev) => ({ ...prev, [field.id]: !prev[field.id] }))}
+                        style={{ width: 40, height: 40, justifyContent: 'center', alignItems: 'center' }}
+                      >
+                        <Ionicons
+                          name={showCustomFieldPassword[field.id] ? 'eye-outline' : 'eye-off-outline'}
+                          size={20}
+                          color={COLORS.textSecondary}
+                        />
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                </View>
               </View>
             </View>
           ))}
@@ -658,7 +753,10 @@ export default function EditCredential() {
               Maximum 10 custom fields reached
             </Text>
           )}
-        </ScrollView>
+              </View>
+            </View>
+          }
+        />
       </KeyboardAvoidingView>
 
       {/* Sticky Update Button */}
