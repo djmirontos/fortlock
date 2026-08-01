@@ -5,6 +5,7 @@ import {
   TextInput,
   TouchableOpacity,
   ScrollView,
+  FlatList,
   StatusBar,
   KeyboardAvoidingView,
   Platform,
@@ -296,76 +297,71 @@ export default function AddCredential() {
         </View>
       </View>
 
-      {/* Tag multi-select — outside ScrollView */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ paddingHorizontal: 20, paddingVertical: 12, gap: 8, flexDirection: 'row' }}
-        style={{ backgroundColor: theme.surface }}
-      >
-        {tags.map((tag) => {
-          const isSelected = selectedTags.includes(tag.id);
-          return (
-            <TouchableOpacity
-              key={tag.id}
-              style={{
-                height: 34,
-                paddingHorizontal: 14,
-                borderRadius: 17,
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 6,
-                backgroundColor: isSelected ? tag.color : theme.surfaceSecondary,
-              }}
-              onPress={() => {
-                setSelectedTags((prev) =>
-                  prev.includes(tag.id)
-                    ? prev.filter((id) => id !== tag.id)
-                    : [...prev, tag.id]
-                );
-              }}
-              activeOpacity={0.7}
-            >
-              <View style={{
-                width: 6, height: 6, borderRadius: 3,
-                backgroundColor: isSelected ? '#FFFFFF' : tag.color,
-              }} />
-              <Text style={{
-                fontSize: 13,
-                fontWeight: '600',
-                color: isSelected ? '#FFFFFF' : theme.textSecondary,
-              }}>
-                {tag.label}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-      </ScrollView>
-
-      {/* Content — INSIDE KeyboardAvoidingView + ScrollView */}
+      {/* Content — a single FlatList is the only vertical scroll container.
+          The horizontal tag ScrollView inside ListHeaderComponent is safe
+          because it scrolls on the other axis. */}
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={{ flex: 1 }}
       >
-        <ScrollView
-          style={{ flex: 1 }}
-          contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 120 }}
-          showsVerticalScrollIndicator={false}
+        <FlatList
+          data={[]}
+          renderItem={null}
           keyboardShouldPersistTaps="handled"
-        >
-          {/* Form Card */}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: 120 }}
+          ListHeaderComponent={
+            <View>
+              {/* Tag chips row */}
+              <View style={{ backgroundColor: theme.surface, paddingVertical: 12 }}>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={{ paddingHorizontal: 20, gap: 8, flexDirection: 'row' }}
+                  keyboardShouldPersistTaps="handled"
+                >
+                  {tags.map((tag) => {
+                    const isSelected = selectedTags.includes(tag.id);
+                    return (
+                      <TouchableOpacity
+                        key={tag.id}
+                        style={{
+                          height: 34, paddingHorizontal: 14, borderRadius: 17,
+                          flexDirection: 'row', alignItems: 'center', gap: 6,
+                          backgroundColor: isSelected ? tag.color : theme.surfaceSecondary,
+                        }}
+                        onPress={() => {
+                          setSelectedTags((prev) =>
+                            prev.includes(tag.id)
+                              ? prev.filter((id) => id !== tag.id)
+                              : [...prev, tag.id]
+                          );
+                        }}
+                        activeOpacity={0.7}
+                      >
+                        <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: isSelected ? '#FFFFFF' : tag.color }} />
+                        <Text style={{ fontSize: 13, fontWeight: '600', color: isSelected ? '#FFFFFF' : theme.textSecondary }}>
+                          {tag.label}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+              </View>
+
+              {/* Form card */}
+              <View style={{ paddingHorizontal: 16, paddingTop: 16 }}>
           <View
             style={{
               backgroundColor: COLORS.card,
               borderRadius: 20,
+              overflow: "hidden",
               elevation: 1,
               shadowColor: "#000",
               shadowOffset: { width: 0, height: 2 },
               shadowOpacity: 0.06,
               shadowRadius: 8,
-              padding: 0,
               marginBottom: 16,
-              overflow: "hidden",
             }}
           >
             {isBanking ? (
@@ -545,6 +541,7 @@ export default function AddCredential() {
             style={{
               backgroundColor: COLORS.card,
               borderRadius: 20,
+              overflow: "hidden",
               elevation: 1,
               shadowColor: "#000",
               shadowOffset: { width: 0, height: 2 },
@@ -566,7 +563,10 @@ export default function AddCredential() {
               multiline
             />
           </View>
-        </ScrollView>
+              </View>
+            </View>
+          }
+        />
       </KeyboardAvoidingView>
 
       {/* Sticky Save Button */}
