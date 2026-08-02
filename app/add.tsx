@@ -864,6 +864,22 @@ export default function AddCredential() {
               Credential has been added to your vault
             </Text>
           </View>
+          <TouchableOpacity
+            onPress={() => {
+              Animated.timing(toastOpacity, {
+                toValue: 0,
+                duration: 200,
+                useNativeDriver: true,
+              }).start(() => {
+                setShowToast(false);
+                toastTranslateY.setValue(-20);
+              });
+            }}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            style={{ marginLeft: 8 }}
+          >
+            <Ionicons name="close" size={18} color={theme.textSecondary} />
+          </TouchableOpacity>
         </Animated.View>
       )}
 
