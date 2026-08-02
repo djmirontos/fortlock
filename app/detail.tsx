@@ -308,7 +308,7 @@ export default function DetailScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: COLORS.background }}>
-      <StatusBar barStyle="dark-content" backgroundColor={COLORS.card} translucent={false} />
+      <StatusBar barStyle={theme.isDark ? "light-content" : "dark-content"} backgroundColor={COLORS.card} translucent={false} />
 
       {/* Header — OUTSIDE ScrollView, direct child of container (golden rule) */}
       <View style={{ backgroundColor: COLORS.card, paddingTop: insets.top + 12 }}>

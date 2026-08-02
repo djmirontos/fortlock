@@ -12,6 +12,8 @@ import {
   Modal,
   TextInput,
   FlatList,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -380,15 +382,16 @@ export default function Settings() {
       />
 
       {/* Header — OUTSIDE ScrollView, guaranteed full width */}
-      <View style={[styles.header, { backgroundColor: theme.surface, paddingTop: insets.top }]}>
+      <View style={[styles.header, { backgroundColor: theme.surface, paddingTop: insets.top + 12 }]}>
         <Text style={[styles.headerTitle, { color: theme.textPrimary }]}>Settings</Text>
       </View>
 
       {/* Content */}
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={{ paddingBottom: 100 }}
+        contentContainerStyle={{ paddingBottom: 100 + insets.bottom }}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
         {/* Security Section */}
         <Text style={[styles.sectionLabel, { color: theme.textSecondary }]}>Security</Text>
@@ -583,7 +586,7 @@ export default function Settings() {
           flexDirection: 'row',
           alignItems: 'center',
           height: 64 + insets.bottom,
-          paddingBottom: insets.bottom,
+          paddingBottom: insets.bottom + 8,
           paddingTop: 10,
           elevation: 20,
           shadowColor: '#000',
@@ -665,7 +668,8 @@ export default function Settings() {
               </TouchableOpacity>
             </View>
 
-            <ScrollView showsVerticalScrollIndicator={false}>
+            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+            <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
               {/* Current Password */}
               <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>
                 Current Password
@@ -793,6 +797,7 @@ export default function Settings() {
                 )}
               </TouchableOpacity>
             </ScrollView>
+            </KeyboardAvoidingView>
           </View>
         </View>
       </Modal>

@@ -3,6 +3,7 @@ import {
   View,
   Text,
   TouchableOpacity,
+  ScrollView,
   StatusBar,
   Alert,
   ActivityIndicator,
@@ -147,6 +148,10 @@ export default function TotpDetail() {
         </TouchableOpacity>
       </View>
 
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 100 + insets.bottom }}
+      >
       {/* Hero */}
       <View style={{ backgroundColor: theme.surface, paddingVertical: 24, alignItems: 'center', marginBottom: 8 }}>
         <View style={{
@@ -208,9 +213,16 @@ export default function TotpDetail() {
           {isWarning ? `Expires in ${remainingSeconds}s` : `Refreshes in ${remainingSeconds}s`}
         </Text>
       </View>
+      </ScrollView>
 
-      {/* Copy Button */}
-      <View style={{ paddingHorizontal: 16, marginTop: 16 }}>
+      {/* Copy Button — sticky */}
+      <View style={{
+        position: 'absolute', bottom: 0, left: 0, right: 0,
+        backgroundColor: theme.surface,
+        paddingHorizontal: 16, paddingTop: 12,
+        paddingBottom: insets.bottom + 12,
+        borderTopWidth: 0.5, borderTopColor: theme.stroke,
+      }}>
         <TouchableOpacity
           style={{
             height: 52, borderRadius: 14,

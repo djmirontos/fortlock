@@ -60,7 +60,7 @@ export default function Authenticator() {
     );
   };
 
-  const renderEntry = ({ item }: { item: TotpEntryDecrypted }) => {
+  const renderEntry = useCallback(({ item }: { item: TotpEntryDecrypted }) => {
     return (
       <TouchableOpacity
         style={{
@@ -120,7 +120,7 @@ export default function Authenticator() {
         </View>
       </TouchableOpacity>
     );
-  };
+  }, [theme]);
 
   if (isLoading) {
     return (

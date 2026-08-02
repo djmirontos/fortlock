@@ -176,7 +176,7 @@ export default function Dashboard() {
     return result;
   }, [credentials, activeTag, search, sortBy]);
 
-  const favorites = credentials.filter((c) => c.isFavorite === true);
+  const favorites = useMemo(() => credentials.filter((c) => c.isFavorite === true), [credentials]);
 
   const handleCopy = (text: string, label: string) => {
     Clipboard.setStringAsync(text);
@@ -316,7 +316,9 @@ export default function Dashboard() {
     // would freeze the closure on the initial empty array.
   }, [theme, tags]);
 
-  const renderListHeader = () => (
+  // Memoised: a fresh function identity here makes FlatList treat it as a new
+  // component type and remount the whole header on every keystroke.
+  const renderListHeader = useCallback(() => (
     <>
       {/* Tag Chips */}
       <FlatList
@@ -438,7 +440,7 @@ export default function Dashboard() {
         </TouchableOpacity>
       </View>
     </>
-  );
+  ), [theme, favorites, tags, sortBy, activeTag, showFavoritesModal]);
 
   if (isLoading) {
     return (
@@ -547,7 +549,7 @@ export default function Dashboard() {
           <View style={{ alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32, paddingTop: 48 }}>
             <View style={{
               width: 80, height: 80, borderRadius: 24,
-              backgroundColor: '#EFF6FF',
+              backgroundColor: theme.isDark ? '#1E2D6B' : '#EFF6FF',
               alignItems: 'center', justifyContent: 'center',
               marginBottom: 16,
             }}>
@@ -861,7 +863,7 @@ export default function Dashboard() {
                   width: 36,
                   height: 36,
                   borderRadius: 10,
-                  backgroundColor: '#EFF6FF',
+                  backgroundColor: theme.isDark ? '#1E2D6B' : '#EFF6FF',
                   alignItems: 'center',
                   justifyContent: 'center',
                 }}
